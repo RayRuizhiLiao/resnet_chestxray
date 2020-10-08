@@ -1,3 +1,10 @@
+'''
+Author: Ruizhi Liao
+
+Main script to run training and evaluation of a residual network model
+on chest x-ray images
+'''
+
 import csv
 import os
 import numpy as np
@@ -35,6 +42,7 @@ import main_utils
 
 def main():
 	args = parser.get_args()
+	
 	device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 	assert torch.cuda.is_available(), "No GPU/CUDA is detected!"
 

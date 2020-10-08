@@ -104,7 +104,7 @@ def train(args, device, model, img_ids, labels):
 
 	        # forward + backward + optimize
 	        outputs = model(inputs)
-	        loss = BCE_loss_criterion(outputs, labels)
+	        loss = BCE_loss_criterion(outputs[0], labels)
 	        loss.backward()
 	        optimizer.step()
 
