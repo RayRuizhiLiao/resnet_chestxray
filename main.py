@@ -16,13 +16,14 @@ import sys
 from pathlib import Path
 current_path = os.path.dirname(os.path.abspath(__file__))
 current_path = Path(current_path)
-parent_path = current_path.parent
-print('Project home directory: ', str(parent_path))
-sys.path.insert(0, str(parent_path))
+#parent_path = current_path.parent
+#print('Project home directory: ', str(parent_path))
+#sys.path.insert(0, str(parent_path))
+sys.path.insert(0, str(current_path))
 print('sys.path: ', sys.path) # Should not use sys.path.append here
 
 import git # This is used for tracking commit sha
-repo = git.Repo(path=parent_path)
+repo = git.Repo(path=current_path)
 sha = repo.head.object.hexsha
 print("Current git commit sha: ", sha)
 
