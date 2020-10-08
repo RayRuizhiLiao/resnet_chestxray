@@ -21,6 +21,11 @@ print('Project home directory: ', str(parent_path))
 sys.path.insert(0, str(parent_path))
 print('sys.path: ', sys.path) # Should not use sys.path.append here
 
+import git # This is used for tracking commit sha
+repo = git.Repo(path=parent_path)
+sha = repo.head.object.hexsha
+print("Current git commit sha: ", sha)
+
 import torch
 
 import torch.nn as nn
@@ -42,7 +47,7 @@ import main_utils
 
 def main():
 	args = parser.get_args()
-	
+
 	device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 	assert torch.cuda.is_available(), "No GPU/CUDA is detected!"
 
