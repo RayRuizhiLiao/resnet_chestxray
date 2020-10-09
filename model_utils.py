@@ -254,46 +254,46 @@ class RandomTranslateCrop(object):
 #     return train_labels, train_ids, val_labels, val_ids
 
 
-# Given a data split list (.csv), training folds and validation folds,
-# return DICOM IDs and the associated labels for training and validation
-def _split_tr_val(split_list_path, training_folds, validation_folds, use_test_data=False):
-    """Extracting finding labels
-    """
+# # Given a data split list (.csv), training folds and validation folds,
+# # return DICOM IDs and the associated labels for training and validation
+# def _split_tr_val(split_list_path, training_folds, validation_folds, use_test_data=False):
+#     """Extracting finding labels
+#     """
 
-    print('Data split list being used: ', split_list_path)
+#     print('Data split list being used: ', split_list_path)
 
-    train_labels = {}
-    train_ids = {}
-    val_labels = {}
-    val_ids = {}
-    test_labels = {}
-    test_ids = {}
+#     train_labels = {}
+#     train_ids = {}
+#     val_labels = {}
+#     val_ids = {}
+#     test_labels = {}
+#     test_ids = {}
 
 
-    with open(split_list_path, 'r') as train_label_file:
-        train_label_file_reader = csv.reader(train_label_file)
-        row = next(train_label_file_reader)
-        for row in train_label_file_reader:
-            if row[-1] != 'TEST':
-                if int(row[-1]) in training_folds:
-                    train_labels[row[2]] = [float(row[3])]
-                    train_ids[row[2]] = row[1]
-                if int(row[-1]) in validation_folds and not use_test_data:
-                    val_labels[row[2]] = [float(row[3])]
-                    val_ids[row[2]] = row[1]
-            if row[-1] == 'TEST' and use_test_data:
-                    test_labels[row[2]] = [float(row[3])]
-                    test_ids[row[2]] = row[1]               
+#     with open(split_list_path, 'r') as train_label_file:
+#         train_label_file_reader = csv.reader(train_label_file)
+#         row = next(train_label_file_reader)
+#         for row in train_label_file_reader:
+#             if row[-1] != 'TEST':
+#                 if int(row[-1]) in training_folds:
+#                     train_labels[row[2]] = [float(row[3])]
+#                     train_ids[row[2]] = row[1]
+#                 if int(row[-1]) in validation_folds and not use_test_data:
+#                     val_labels[row[2]] = [float(row[3])]
+#                     val_ids[row[2]] = row[1]
+#             if row[-1] == 'TEST' and use_test_data:
+#                     test_labels[row[2]] = [float(row[3])]
+#                     test_ids[row[2]] = row[1]               
 
-    print("Training and validation folds: ", training_folds, validation_folds)
-    print("Total number of training labels: ", len(train_labels))
-    print("Total number of training DICOM IDs: ", len(train_ids))
-    print("Total number of validation labels: ", len(val_labels))
-    print("Total number of validation DICOM IDs: ", len(val_ids))
-    print("Total number of test labels: ", len(test_labels))
-    print("Total number of test DICOM IDs: ", len(test_ids))
+#     print("Training and validation folds: ", training_folds, validation_folds)
+#     print("Total number of training labels: ", len(train_labels))
+#     print("Total number of training DICOM IDs: ", len(train_ids))
+#     print("Total number of validation labels: ", len(val_labels))
+#     print("Total number of validation DICOM IDs: ", len(val_ids))
+#     print("Total number of test labels: ", len(test_labels))
+#     print("Total number of test DICOM IDs: ", len(test_ids))
 
-    if use_test_data:
-        return train_labels, train_ids, test_labels, test_ids
-    else:
-        return train_labels, train_ids, val_labels, val_ids
+#     if use_test_data:
+#         return train_labels, train_ids, test_labels, test_ids
+#     else:
+#         return train_labels, train_ids, val_labels, val_ids

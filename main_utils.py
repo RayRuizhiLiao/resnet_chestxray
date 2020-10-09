@@ -1,3 +1,10 @@
+'''
+Author: Ruizhi Liao
+
+Main_utils script to run training and evaluation 
+of a residual network model on chest x-ray images
+'''
+
 import os
 from tqdm import tqdm, trange
 import logging
@@ -10,7 +17,6 @@ from sklearn.metrics import mean_squared_error as mse
 
 import torch
 import torchvision
-
 from pytorch_transformers.optimization import WarmupLinearSchedule
 import torch.optim as optim
 import torch.optim.lr_scheduler as lr_scheduler
@@ -21,31 +27,82 @@ from torch.utils.data import DataLoader
 from model_utils import CXRImageDataset
 from model_utils import CenterCrop, RandomTranslateCrop
 
-from pathlib import Path
-import sys
-current_path = os.path.dirname(os.path.abspath(__file__))
-current_path = Path(current_path)
-parent_path = current_path.parent
-print('Project home directory: ', str(parent_path))
-sys.path.insert(0, str(parent_path))
-print('sys.path: ', sys.path) # Should not use sys.path.append here
-from scripts import metrics as eval_metrics
+# from pathlib import Path
+# import sys
+# current_path = os.path.dirname(os.path.abspath(__file__))
+# current_path = Path(current_path)
+# parent_path = current_path.parent
+# print('Project home directory: ', str(parent_path))
+# sys.path.insert(0, str(parent_path))
+# print('sys.path: ', sys.path) # Should not use sys.path.append here
+# from scripts import metrics as eval_metrics
+
+
+def split_tr_eval(split_list_path, training_folds, evaluation_folds):
+    """
+    Given a data split list (.csv), training folds and evaluation folds,
+    return DICOM IDs and the associated labels for training and evaluation
+    """
+
+    print('Data split list being used: ', split_list_path)
+
+    train_labels = {}
+    train_ids = {}
+    val_labels = {}
+    val_ids = {}
+    test_labels = {}
+    test_ids = {}
+
+    with open(split_list_path, 'r') as train_label_file:
+        train_label_file_reader = csv.reader(train_label_file)
+        row = next(train_label_file_reader)
+        for row in train_label_file_reader:
+            if row[-1] != 'TEST':
+                if int(row[-1]) in training_folds:
+                    train_labels[row[2]] = [float(row[3])]
+                    train_ids[row[2]] = row[1]
+                if int(row[-1]) in validation_folds and not use_test_data:
+                    val_labels[row[2]] = [float(row[3])]
+                    val_ids[row[2]] = row[1]
+            if row[-1] == 'TEST' and use_test_data:
+                    test_labels[row[2]] = [float(row[3])]
+                    test_ids[row[2]] = row[1]               
+
+    print("Training and validation folds: ", training_folds, validation_folds)
+    print("Total number of training labels: ", len(train_labels))
+    print("Total number of training DICOM IDs: ", len(train_ids))
+    print("Total number of validation labels: ", len(val_labels))
+    print("Total number of validation DICOM IDs: ", len(val_ids))
+    print("Total number of test labels: ", len(test_labels))
+    print("Total number of test DICOM IDs: ", len(test_ids))
+
+	return train_labels, train_ids, val_labels, val_ids
 
 # Model training function
-def train(args, device, model, img_ids, labels):
+def train(args, device, model):
 
-	# Create a logger for logging model training
+	'''
+	Create a logger for logging model training
+	'''
 	logger = logging.getLogger(__name__)
 
-	# Create instance of loss
+	''' 
+	Create an instance of loss
+	'''
+	# TODO: get rid of label_encoding
 	if args.label_encoding == 'ordinal':
 		BCE_loss_criterion = BCEWithLogitsLoss().to(device)
 	if args.label_encoding == 'onehot':
 		BCE_loss_criterion = BCELoss().to(device)
 
-	# Create instance of traning data loader
+	'''
+	Create an instance of traning data loader
+	'''
 	xray_transform = RandomTranslateCrop(2048)
-	cxr_dataset = CXRImageDataset(img_ids, labels, args.image_dir,
+	train_labels, train_dicom_ids, _, _ = split_tr_val(args.data_split_path,
+													   args.training_folds,
+													   args.validation_folds)
+	cxr_dataset = CXRImageDataset(train_dicom_ids, train_labels, args.image_dir,
 	                              transform=xray_transform, image_format=args.image_format,
 	                              encoding=args.label_encoding)
 	trainloader = DataLoader(cxr_dataset, batch_size=args.batch_size,
