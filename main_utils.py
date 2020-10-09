@@ -99,9 +99,9 @@ def train(args, device, model):
 	Create an instance of traning data loader
 	'''
 	xray_transform = RandomTranslateCrop(2048)
-	train_labels, train_dicom_ids, _, _ = split_tr_val(args.data_split_path,
-													   args.training_folds,
-													   args.validation_folds)
+	train_labels, train_dicom_ids, _, _ = split_tr_eval(args.data_split_path,
+													    args.training_folds,
+													    args.validation_folds)
 	cxr_dataset = CXRImageDataset(train_dicom_ids, train_labels, args.image_dir,
 	                              transform=xray_transform, image_format=args.image_format,
 	                              encoding=args.label_encoding)
