@@ -62,12 +62,12 @@ def split_tr_eval(split_list_path, training_folds, evaluation_folds):
 				if int(row[-1]) in training_folds:
 					train_labels[row[2]] = [float(row[3])]
 					train_ids[row[2]] = row[1]
-				if int(row[-1]) in evaluation_folds and not use_test_data:
+				if int(row[-1]) in evaluation_folds# and not use_test_data:
 					val_labels[row[2]] = [float(row[3])]
 					val_ids[row[2]] = row[1]
-			if row[-1] == 'TEST' and use_test_data:
-					test_labels[row[2]] = [float(row[3])]
-					test_ids[row[2]] = row[1]               
+			# if row[-1] == 'TEST' and use_test_data:
+			# 		test_labels[row[2]] = [float(row[3])]
+			# 		test_ids[row[2]] = row[1]               
 
 	print("Training and evaluation folds: ", training_folds, evaluation_folds)
 	print("Total number of training labels: ", len(train_labels))
