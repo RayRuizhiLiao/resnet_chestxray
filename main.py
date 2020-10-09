@@ -43,7 +43,7 @@ def main():
 
 	assert args.do_train or args.do_eval, \
 		"Either do_train or do_eval has to be True!"
-	assert !(args.do_train and args.do_eval), \
+	assert not(args.do_train and args.do_eval), \
 		"do_train and do_eval cannot be both True!"
 
 	#raw_output_dir = args.output_dir
