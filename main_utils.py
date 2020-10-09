@@ -28,17 +28,8 @@ from torch.utils.data import DataLoader
 from model_utils import CXRImageDataset
 from model_utils import CenterCrop, RandomTranslateCrop
 
-# from pathlib import Path
-# import sys
-# current_path = os.path.dirname(os.path.abspath(__file__))
-# current_path = Path(current_path)
-# parent_path = current_path.parent
-# print('Project home directory: ', str(parent_path))
-# sys.path.insert(0, str(parent_path))
-# print('sys.path: ', sys.path) # Should not use sys.path.append here
-# from scripts import metrics as eval_metrics
 
-
+# TODO: optimize this method and maybe the csv format
 def split_tr_eval(split_list_path, training_folds, evaluation_folds):
 	"""
 	Given a data split list (.csv), training folds and evaluation folds,
@@ -111,7 +102,9 @@ def train(args, device, model):
 	                         pin_memory=True)
 	print('Total number of training images: ', len(cxr_dataset))
 
-	# Create instance of optimizer (AdamW) and learning rate scheduler 
+	'''
+	Create an instance of optimizer (AdamW) and learning rate scheduler
+	'''
 	optimizer = optim.AdamW(model.parameters(), 
 							lr=args.init_lr)
 	if args.scheduler == 'WarmupLinearSchedule':
@@ -122,61 +115,68 @@ def train(args, device, model):
 	if args.scheduler == 'ReduceLROnPlateau':
 		scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, threshold=1e-6)
 
-	# Log training info
-	logger.info("***** Running training *****")
+	'''
+	Log training info
+	'''
+	logger.info("***** Training info *****")
 	logger.info("  Model architecture: %s", args.model_architecture)
 	logger.info("  Data split file: %s", args.data_split_path)
-	logger.info("  Training fold = %s\t Validation fold = %s"%(args.training_folds, args.validation_folds))
-	logger.info("  Num training examples = %d", len(cxr_dataset))
-	logger.info("  Num Epochs = %d", args.num_train_epochs)
-	logger.info("  Batch size = %d", args.batch_size)
-	logger.info("  Initial learning rate = %f", args.init_lr)
-	logger.info("  Learning rate scheduler = %s", args.scheduler)
+	logger.info("  Training folds: %s\t Evaluation folds: %s"%(args.training_folds, args.validation_folds))
+	logger.info("  Number of training examples: %d", len(cxr_dataset))
+	logger.info("  Number of epochs: %d", args.num_train_epochs)
+	logger.info("  Batch size: %d", args.batch_size)
+	logger.info("  Initial learning rate: %f", args.init_lr)
+	logger.info("  Learning rate scheduler: %s", args.scheduler)
 	if args.scheduler == 'WarmupLinearSchedule':
-		logger.info("  Total number of training steps = %d", num_train_optimization_steps)
-		logger.info("  Number of steps for warming up learning rate = %d", args.warmup_steps)
+		logger.info("  Total number of training steps: %d", num_train_optimization_steps)
+		logger.info("  Number of steps for warming up learning rate: %d", args.warmup_steps)
 
-	# Create instance of a tensorboard writer
+	'''
+	Create an instance of a tensorboard writer
+	'''
 	tsbd_writer = SummaryWriter(log_dir=args.tsbd_dir)
-	images, labels = next(iter(trainloader))
-	images = images.to(device)
-	labels = labels.to(device)
-	tsbd_writer.add_graph(model, images)
+	# images, labels = next(iter(trainloader))
+	# images = images.to(device)
+	# labels = labels.to(device)
+	# tsbd_writer.add_graph(model, images)
 
-	# Start model training
+	'''
+	Train the model
+	'''
 	model.train()
 	train_iterator = trange(int(args.num_train_epochs), desc="Epoch")
 	global_step = 0
-	running_loss = 0.0
+	running_loss = 0
+	logger.info("***** Training the model *****")
 	for epoch in train_iterator:
 	    logger.info("  Starting a new epoch: %d", epoch + 1)
 	    epoch_iterator = tqdm(trainloader, desc="Iteration")
 	    tr_loss = 0
 	    for i, batch in enumerate(epoch_iterator, 0):
-	        # get the inputs; data is a list of [inputs, labels]
+	        # Get the batch 
 	        batch = tuple(t.to(device, non_blocking=True) for t in batch)
 	        inputs, labels = batch
 
-	        # zero the parameter gradients
+	        # Zero the parameter gradients
 	        optimizer.zero_grad()
 
-	        # forward + backward + optimize
+	        # Forward + backward + optimize
 	        outputs = model(inputs)
 	        loss = BCE_loss_criterion(outputs[0], labels)
 	        loss.backward()
 	        optimizer.step()
 
-			# Update learning rate schedule
+			# Update learning rate scheduler
 	        if args.scheduler == 'WarmupLinearSchedule':
 	        	scheduler.step()
 
-	        # print statistics
+	        # Print and record statistics
 	        running_loss += loss.item()
 	        tr_loss += loss.item()
 	        global_step += 1
 	        if global_step % args.logging_steps == 0:
-	            grid = torchvision.utils.make_grid(inputs)
-	            tsbd_writer.add_image('images', grid, global_step)
+	            #grid = torchvision.utils.make_grid(inputs)
+	            #tsbd_writer.add_image('images', grid, global_step)
 	            tsbd_writer.add_scalar('loss/train', 
 	                                   running_loss / (args.logging_steps*args.batch_size), 
 	                                   global_step)
@@ -185,8 +185,9 @@ def train(args, device, model):
 	            	(epoch + 1, i + 1, global_step, optimizer.param_groups[0]['lr']))
 	            logger.info("  [%d, %5d, %5d] loss = %.5f"%\
 	            	(epoch + 1, i + 1, global_step, running_loss / (args.logging_steps*args.batch_size)))        
-	            running_loss = 0.0
-	    logger.info("  Training loss of epoch %d: %.5f"%\
+	            running_loss = 0
+	    logger.info("  Finished an epoch: %d", epoch + 1)
+	    logger.info("  Training loss of epoch %d = %.5f"%\
 	    	(epoch+1, tr_loss / (len(cxr_dataset)*args.batch_size)))
 	    model.save_pretrained(args.checkpoints_dir, epoch=epoch + 1)
 	    if args.scheduler == 'ReduceLROnPlateau':

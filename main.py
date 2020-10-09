@@ -44,8 +44,6 @@ def main():
 	assert not(args.do_train and args.do_eval), \
 		"do_train and do_eval cannot be both True!"
 
-	#raw_output_dir = args.output_dir
-	#args.output_dir = os.path.join(args.output_dir, args.run_id)
 	if not(os.path.exists(args.output_dir)) and args.do_train:
 		os.makedirs(args.output_dir)
 	if args.do_eval:
@@ -87,15 +85,6 @@ def main():
 	print('Input image formet:', args.image_format)
 	print('Label encoding:', args.label_encoding)
 
-	# if args.data_split_mode == 'testing':
-	# 	use_test_data = True
-	# else:
-	# 	use_test_data = False
-	# train_labels, train_ids, eval_labels, eval_ids = _split_tr_val(args.data_split_path, 
-	#                                                                args.training_folds, 
-	#                                                                args.validation_folds,
-	#                                                                use_test_data=use_test_data)
-
 	if args.do_train:
 
 		'''
@@ -113,19 +102,17 @@ def main():
 		if not os.path.exists(args.tsbd_dir):
 			os.makedirs(args.tsbd_dir)
 		args.checkpoints_dir = os.path.join(args.checkpoints_dir, 
-											'checkpoints{}'.format(len(os.listdir(args.checkpoints_dir))))
+											'checkpoints_{}'.format(len(os.listdir(args.checkpoints_dir))))
 		if not os.path.exists(args.checkpoints_dir):
 			os.makedirs(args.checkpoints_dir)
 
 		'''
 		Create instance of a resnet model
 		'''
-		if args.label_encoding == 'onehot':
-			add_softmax = True
-			output_channels = 4
-		elif args.label_encoding == 'ordinal':
-			add_softmax = False
-			output_channels = 3
+		# TODO: remove args.label_encoding
+		args.label_encoding == 'onehot':
+		add_softmax = True
+		output_channels = 4
 		if args.model_architecture == 'resnet14_1':
 			resnet_model = resnet14_1(add_softmax=add_softmax, 
 									  output_channels=output_channels)
@@ -143,9 +130,9 @@ def main():
 		'''
 		Train the model
 		'''
-		print("--Training the model--")
+		print("***** Training the model *****")
 		main_utils.train(args, device, resnet_model)
-		print('--Finished training--')
+		print("***** Finished training *****")
 
 	if args.do_eval:
 
