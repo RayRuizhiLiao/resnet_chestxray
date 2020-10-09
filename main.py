@@ -30,7 +30,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from model import resnet14_1, resnet14_16, resnet14_4, resnet10_16
-from model_utils import _split_tr_val
 import parser
 import main_utils
 
