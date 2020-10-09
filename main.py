@@ -5,7 +5,6 @@ Main script to run training and evaluation of a residual network model
 on chest x-ray images
 '''
 
-import csv
 import os
 import numpy as np
 from math import floor, ceil
