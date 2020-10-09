@@ -110,7 +110,7 @@ def main():
 		Create instance of a resnet model
 		'''
 		# TODO: remove args.label_encoding
-		args.label_encoding == 'onehot':
+		args.label_encoding == 'onehot'
 		add_softmax = True
 		output_channels = 4
 		if args.model_architecture == 'resnet14_1':
