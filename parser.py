@@ -48,7 +48,7 @@ parser.add_argument('--logging_steps', default=50, type=int,
         			help='Number of steps for logging')
 parser.add_argument('--training_folds', default=[1,2,3,4],
                     nargs='+', type=int, help="folds for training")
-parser.add_argument('--validation_folds', default=[5],
+parser.add_argument('--evaluation_folds', default=[5],
                     nargs='+', type=int, help="folds for validation")
 parser.add_argument('--image_format', default='png',
                     help='The format of the images that the model is reading, by default png')

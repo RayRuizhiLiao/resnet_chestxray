@@ -93,11 +93,11 @@ def train(args, device, model):
 	xray_transform = RandomTranslateCrop(2048)
 	train_labels, train_dicom_ids, _, _ = split_tr_eval(args.data_split_path,
 													    args.training_folds,
-													    args.validation_folds)
+													    args.evaluation_folds)
 	cxr_dataset = CXRImageDataset(train_dicom_ids, train_labels, args.image_dir,
 	                              transform=xray_transform, image_format=args.image_format,
 	                              encoding=args.label_encoding)
-	trainloader = DataLoader(cxr_dataset, batch_size=args.batch_size,
+	data_loader = DataLoader(cxr_dataset, batch_size=args.batch_size,
 	                         shuffle=True, num_workers=8,
 	                         pin_memory=True)
 	print('Total number of training images: ', len(cxr_dataset))
@@ -108,7 +108,7 @@ def train(args, device, model):
 	optimizer = optim.AdamW(model.parameters(), 
 							lr=args.init_lr)
 	if args.scheduler == 'WarmupLinearSchedule':
-		num_train_optimization_steps = len(trainloader) * args.num_train_epochs
+		num_train_optimization_steps = len(data_loader) * args.num_train_epochs
 		args.warmup_steps = args.warmup_proportion * num_train_optimization_steps
 		scheduler = WarmupLinearSchedule(optimizer, warmup_steps=args.warmup_steps,
 										 t_total=num_train_optimization_steps)
@@ -121,7 +121,7 @@ def train(args, device, model):
 	logger.info("***** Training info *****")
 	logger.info("  Model architecture: %s", args.model_architecture)
 	logger.info("  Data split file: %s", args.data_split_path)
-	logger.info("  Training folds: %s\t Evaluation folds: %s"%(args.training_folds, args.validation_folds))
+	logger.info("  Training folds: %s\t Evaluation folds: %s"%(args.training_folds, args.evaluation_folds))
 	logger.info("  Number of training examples: %d", len(cxr_dataset))
 	logger.info("  Number of epochs: %d", args.num_train_epochs)
 	logger.info("  Batch size: %d", args.batch_size)
@@ -135,7 +135,7 @@ def train(args, device, model):
 	Create an instance of a tensorboard writer
 	'''
 	tsbd_writer = SummaryWriter(log_dir=args.tsbd_dir)
-	# images, labels = next(iter(trainloader))
+	# images, labels = next(iter(data_loader))
 	# images = images.to(device)
 	# labels = labels.to(device)
 	# tsbd_writer.add_graph(model, images)
@@ -150,7 +150,7 @@ def train(args, device, model):
 	logger.info("***** Training the model *****")
 	for epoch in train_iterator:
 	    logger.info("  Starting a new epoch: %d", epoch + 1)
-	    epoch_iterator = tqdm(trainloader, desc="Iteration")
+	    epoch_iterator = tqdm(data_loader, desc="Iteration")
 	    tr_loss = 0
 	    for i, batch in enumerate(epoch_iterator, 0):
 	        # Get the batch 
@@ -196,28 +196,51 @@ def train(args, device, model):
 	tsbd_writer.close()
 
 # Model evaluation function
-def evaluate(args, device, model, checkpoint, img_ids, labels):
+def evaluate(args, device, model, checkpoint):
 
-	# Create a logger for logging model evaluation results
+	'''
+	Create a logger for logging model evaluation results
+	'''
 	logger = logging.getLogger(__name__)
 
+	# TODO: get rid of label_encoding
 	if args.label_encoding == 'onehot':
 		output_channel_encoding = 'multiclass'
 	elif args.label_encoding == 'ordinal':
 		output_channel_encoding = 'multilabel'
 
+	'''
+	Create an instance of evaluation data loader
+	'''
 	xray_transform = CenterCrop(2048)
-	cxr_dataset = CXRImageDataset(img_ids, labels, args.image_dir,
-	                              transform=xray_transform, image_format=args.image_format,
-	                              encoding=args.label_encoding)
-	trainloader = DataLoader(cxr_dataset, batch_size=args.batch_size,
+	_, _, eval_labels, eval_dicom_ids = split_tr_eval(args.data_split_path,
+													  args.training_folds,
+													  args.evaluation_folds)
+	cxr_dataset = CXRImageDataset(eval_dicom_ids, eval_labels, args.image_dir,
+								  transform=xray_transform, 
+								  image_format=args.image_format,
+								  encoding=args.label_encoding)
+	data_loader = DataLoader(cxr_dataset, batch_size=args.batch_size,
 	                         num_workers=8, pin_memory=True)
-	print('Total number of evaluating images: ', len(cxr_dataset))
+	print('Total number of evaluation images: ', len(cxr_dataset))
 
-	# Log dataset and checkpoint info
-	logger.info("***** Running evaluation {} *****".format(checkpoint))
-	logger.info("  Num examples = %d", len(cxr_dataset))
-	logger.info("  Batch size = %d", args.batch_size)
+	'''
+	Log evaluation info
+	'''
+	logger.info("***** Evaluation info *****")
+	logger.info("  Model architecture: %s", args.model_architecture)
+	logger.info("  Data split file: %s", args.data_split_path)
+	logger.info("  Training folds: %s\t Evaluation folds: %s"%(args.training_folds, args.evaluation_folds))
+	logger.info("  Number of evaluation examples: %d", len(cxr_dataset))
+	logger.info("  Number of epochs: %d", args.num_train_epochs)
+	logger.info("  Batch size: %d", args.batch_size)
+
+	logger.info("***** Evaluating the model with the checkpoint #{} *****".format(checkpoint))
+
+
+	'''
+	Evaluate the model
+	'''
 
 	# For storing labels and model predictions
 	preds = []
@@ -227,11 +250,10 @@ def evaluate(args, device, model, checkpoint, img_ids, labels):
 	# preds_v = []
 	# labels_v = []
 
-	# Start model evaluation
 	model.eval()
-	epoch_iterator = tqdm(trainloader, desc="Iteration")
+	epoch_iterator = tqdm(data_loader, desc="Iteration")
 	for i, batch in enumerate(epoch_iterator, 0):
-		# get the inputs; data is a list of [inputs, labels]
+		# Get the batch; each batch is a list of [image, label]
 		batch = tuple(t.to(device, non_blocking=True) for t in batch)
 		image, label = batch
 		with torch.no_grad():
