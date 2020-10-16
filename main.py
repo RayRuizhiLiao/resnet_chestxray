@@ -178,7 +178,7 @@ def main():
 
 			return eval_results, embeddings, labels_raw
 
-		eval_log_path = os.path.join(raw_output_dir, 
+		eval_log_path = os.path.join(args.output_dir, 
 									 'evaluation_'+str(args.eval_epoch)+'.txt')
 		with open(eval_log_path, 'w') as eval_log:
 			eval_results, embeddings, labels_raw = run_eval_on_checkpoint()
@@ -198,9 +198,9 @@ def main():
 			eval_log.write(str(round(eval_results['macro_f1'],2))+'\n')
 			eval_log.write(str(round(eval_results['accuracy'],2))+'\n')
 		
-			out_labels_raw_path = os.path.join(raw_output_dir, "eval_results_labels")
+			out_labels_raw_path = os.path.join(args.output_dir, "eval_results_labels")
 			np.save(out_labels_raw_path, labels_raw)
-			img_embeddings_path = os.path.join(raw_output_dir, "eval_results_image_embeddings")
+			img_embeddings_path = os.path.join(args.output_dir, "eval_results_image_embeddings")
 			np.save(img_embeddings_path, embeddings)
 
 		# if args.data_split_mode == 'cross_val':
