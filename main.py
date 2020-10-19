@@ -172,8 +172,7 @@ def main():
 			print("***** Evaluating the model *****")
 			eval_results, embeddings, labels_raw = main_utils.evaluate(args, 
 																	   device, 
-																	   resnet_model, 
-																	   args.checkpoint_path)
+																	   resnet_model)
 			print("***** Finished evaluation *****")
 
 			return eval_results, embeddings, labels_raw

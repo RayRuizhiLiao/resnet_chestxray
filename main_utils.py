@@ -196,7 +196,7 @@ def train(args, device, model):
 	tsbd_writer.close()
 
 # Model evaluation function
-def evaluate(args, device, model, checkpoint):
+def evaluate(args, device, model):
 
 	'''
 	Create a logger for logging model evaluation results
@@ -234,8 +234,9 @@ def evaluate(args, device, model, checkpoint):
 	logger.info("  Number of evaluation examples: %d", len(cxr_dataset))
 	logger.info("  Number of epochs: %d", args.num_train_epochs)
 	logger.info("  Batch size: %d", args.batch_size)
+	logger.info("  Model checkpoint {}:".format(args.checkpoint_path))
 
-	logger.info("***** Evaluating the model with the checkpoint #{} *****".format(checkpoint))
+	logger.info("***** Evaluating the model *****")
 
 
 	'''
