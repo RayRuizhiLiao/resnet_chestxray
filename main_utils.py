@@ -27,6 +27,7 @@ from torch.utils.data import DataLoader
 
 from model_utils import CXRImageDataset
 from model_utils import CenterCrop, RandomTranslateCrop
+import eval_metrics
 
 
 # TODO: optimize this method and maybe the csv format
