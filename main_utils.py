@@ -41,10 +41,8 @@ def split_tr_eval(split_list_path, training_folds, evaluation_folds):
 
 	train_labels = {}
 	train_ids = {}
-	val_labels = {}
-	val_ids = {}
-	test_labels = {}
-	test_ids = {}
+	eval_labels = {}
+	eval_ids = {}
 
 	with open(split_list_path, 'r') as train_label_file:
 		train_label_file_reader = csv.reader(train_label_file)
@@ -54,22 +52,20 @@ def split_tr_eval(split_list_path, training_folds, evaluation_folds):
 				if int(row[-1]) in training_folds:
 					train_labels[row[2]] = [float(row[3])]
 					train_ids[row[2]] = row[1]
-				if int(row[-1]) in evaluation_folds:# and not use_test_data:
-					val_labels[row[2]] = [float(row[3])]
-					val_ids[row[2]] = row[1]
-			# if row[-1] == 'TEST' and use_test_data:
-			# 		test_labels[row[2]] = [float(row[3])]
-			# 		test_ids[row[2]] = row[1]               
+				if int(row[-1]) in evaluation_folds:
+					eval_labels[row[2]] = [float(row[3])]
+					eval_ids[row[2]] = row[1]
+			if row[-1] == 'TEST' and -1 in evaluation_folds:
+					eval_labels[row[2]] = [float(row[3])]
+					eval_ids[row[2]] = row[1]              
 
 	print("Training and evaluation folds: ", training_folds, evaluation_folds)
 	print("Total number of training labels: ", len(train_labels))
 	print("Total number of training DICOM IDs: ", len(train_ids))
-	print("Total number of evaluation labels: ", len(val_labels))
-	print("Total number of valuation DICOM IDs: ", len(val_ids))
-	print("Total number of test labels: ", len(test_labels))
-	print("Total number of test DICOM IDs: ", len(test_ids))
+	print("Total number of evaluation labels: ", len(eval_labels))
+	print("Total number of evaluation DICOM IDs: ", len(eval_ids))
 
-	return train_labels, train_ids, val_labels, val_ids
+	return train_labels, train_ids, eval_labels, eval_ids
 
 # Model training function
 def train(args, device, model):
