@@ -25,10 +25,10 @@ parser.add_argument('--output_dir',
         			help='Directory for model training/evaluation output')
 parser.add_argument('--data_split_path',
 					default='/data/vision/polina/projects/chestxray/work_space_v2/report_processing/' \
-	                'edema_labels-12-03-2019/mimic-cxr-sub-img-edema-split.csv',
+	                'edema_labels-12-03-2019/mimic-cxr-sub-img-edema-split-manualtest.csv',
 	                help='CSV path for data fold split')
 parser.add_argument('--run_id',
-					default='cross_val',
+					default=None, type=str,
                     help='An ID for this run')
 parser.add_argument('--checkpoint_path',
                     default='/data/vision/polina/projects/chestxray/work_space_v2/'\
