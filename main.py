@@ -28,7 +28,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from model import resnet14_1, resnet14_16, resnet14_4, resnet10_16
+from model import resnet14_1
 import parser
 import main_utils
 
@@ -113,20 +113,9 @@ def main():
 		'''
 		# TODO: remove args.label_encoding
 		args.label_encoding = 'onehot'
-		add_softmax = True
 		output_channels = 4
 		if args.model_architecture == 'resnet14_1':
-			resnet_model = resnet14_1(add_softmax=add_softmax, 
-									  output_channels=output_channels)
-		if args.model_architecture == 'resnet14_16':
-			resnet_model = resnet14_16(add_softmax=add_softmax, 
-									   output_channels=output_channels)
-		if args.model_architecture == 'resnet14_4':
-			resnet_model = resnet14_4(add_softmax=add_softmax, 
-									  output_channels=output_channels)
-		if args.model_architecture == 'resnet10_16':
-			resnet_model = resnet10_16(add_softmax=add_softmax, 
-									   output_channels=output_channels)
+			resnet_model = resnet14_1(output_channels=output_channels)
 		resnet_model = resnet_model.to(device)
 
 		'''
@@ -143,29 +132,12 @@ def main():
 			Create an instance of a resnet model and load a checkpoint
 			'''
 			args.label_encoding = 'onehot'
-			add_softmax = True
 			output_channels = 4
 
 			if args.model_architecture == 'resnet14_1':
 				resnet_model = resnet14_1(pretrained=True, 
 										  checkpoint=args.checkpoint_path,
-										  add_softmax=add_softmax,
 										  output_channels=output_channels)
-			if args.model_architecture == 'resnet14_16':
-				resnet_model = resnet14_16(pretrained=True, 
-										   checkpoint=args.checkpoint_path,
-										   add_softmax=add_softmax,
-										   output_channels=output_channels)
-			if args.model_architecture == 'resnet14_4':
-				resnet_model = resnet14_4(pretrained=True, 
-										  checkpoint=args.checkpoint_path,
-										  add_softmax=add_softmax,
-										  output_channels=output_channels)
-			if args.model_architecture == 'resnet10_16':
-				resnet_model = resnet10_16(pretrained=True, 
-										   checkpoint=args.checkpoint_path,
-										   add_softmax=add_softmax,
-										   output_channels=output_channels)
 			resnet_model = resnet_model.to(device)
 
 			'''
