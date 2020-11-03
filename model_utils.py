@@ -1,7 +1,9 @@
-import torch
-import torchvision
-import torchvision.transforms as transforms
-from torch.utils.data import Dataset
+'''
+Author: Ruizhi Liao
+
+Model_utils script to support
+residual network model instantiation
+'''
 
 import csv
 import os
@@ -10,6 +12,10 @@ from math import floor, ceil
 import scipy.ndimage as ndimage
 from skimage import io
 
+import torch
+import torchvision
+import torchvision.transforms as transforms
+from torch.utils.data import Dataset
 from torch.utils.tensorboard import SummaryWriter
 import torch.nn as nn
 import torch.nn.functional as F
@@ -51,17 +57,8 @@ def load_image(img_path):
         image = image/np.max(image)
     return image
 
-# Read the images and store them in the memory
-def read_images(img_ids, root_dir):
-    images = {}
-    for img_id in list(img_ids.keys()):
-        img_path = os.path.join(root_dir, img_id+'.npy')
-        image = np.load(img_path)
-        images[img_id] = image
-    return images
 
-
-#Customizing dataset class for chest xray images
+#Dataset class for chest xray images
 class CXRImageDataset(Dataset):
     
     def __init__(self, img_ids, labels, root_dir, 
@@ -227,73 +224,3 @@ class RandomTranslateCrop(object):
                        'constant', constant_values=((0, 0), (0, 0)))
 
         return image
-
-
-# def _split_tr_val(split_list_path, training_folds, validation_folds):
-#     """Extracting finding labels
-#     """
-#     print('split_list_path: ', split_list_path)
-
-#     train_labels = {}
-#     train_ids = {}
-#     val_labels = {}
-#     val_ids = {}
-
-#     with open(split_list_path, 'r') as train_label_file:
-#         train_label_file_reader = csv.reader(train_label_file)
-#         row = next(train_label_file_reader)
-#         for row in train_label_file_reader:
-#             if row[-1] != 'TEST':
-#                 if int(row[-1]) in training_folds:
-#                     train_labels[row[2]] = [float(row[3])]
-#                     train_ids[row[2]] = row[1]
-#                 if int(row[-1]) in validation_folds:
-#                     val_labels[row[2]] = [float(row[3])]
-#                     val_ids[row[2]] = row[1]
-
-#     return train_labels, train_ids, val_labels, val_ids
-
-
-# # Given a data split list (.csv), training folds and validation folds,
-# # return DICOM IDs and the associated labels for training and validation
-# def _split_tr_val(split_list_path, training_folds, validation_folds, use_test_data=False):
-#     """Extracting finding labels
-#     """
-
-#     print('Data split list being used: ', split_list_path)
-
-#     train_labels = {}
-#     train_ids = {}
-#     val_labels = {}
-#     val_ids = {}
-#     test_labels = {}
-#     test_ids = {}
-
-
-#     with open(split_list_path, 'r') as train_label_file:
-#         train_label_file_reader = csv.reader(train_label_file)
-#         row = next(train_label_file_reader)
-#         for row in train_label_file_reader:
-#             if row[-1] != 'TEST':
-#                 if int(row[-1]) in training_folds:
-#                     train_labels[row[2]] = [float(row[3])]
-#                     train_ids[row[2]] = row[1]
-#                 if int(row[-1]) in validation_folds and not use_test_data:
-#                     val_labels[row[2]] = [float(row[3])]
-#                     val_ids[row[2]] = row[1]
-#             if row[-1] == 'TEST' and use_test_data:
-#                     test_labels[row[2]] = [float(row[3])]
-#                     test_ids[row[2]] = row[1]               
-
-#     print("Training and validation folds: ", training_folds, validation_folds)
-#     print("Total number of training labels: ", len(train_labels))
-#     print("Total number of training DICOM IDs: ", len(train_ids))
-#     print("Total number of validation labels: ", len(val_labels))
-#     print("Total number of validation DICOM IDs: ", len(val_ids))
-#     print("Total number of test labels: ", len(test_labels))
-#     print("Total number of test DICOM IDs: ", len(test_ids))
-
-#     if use_test_data:
-#         return train_labels, train_ids, test_labels, test_ids
-#     else:
-#         return train_labels, train_ids, val_labels, val_ids
