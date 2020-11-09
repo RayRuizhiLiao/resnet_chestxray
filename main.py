@@ -51,7 +51,7 @@ def main():
 	if args.do_eval:
 		# output_dir has to exist if doing evaluation
 		assert os.path.exists(args.output_dir), \
-			"Output directory doesn't exist!"
+			"Output directory {} doesn't exist!".format(args.output_dir)
 		# if args.data_split_mode=='testing': 
 		# 	# Checkpoint has to exist if doing evaluation with testing split
 		# 	assert os.path.exists(args.checkpoint_path), \
