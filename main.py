@@ -44,6 +44,9 @@ def main():
 	assert not(args.do_train and args.do_eval), \
 		"do_train and do_eval cannot be both True!"
 
+	# To track results from different commits (temporary)
+	args.run_id = args.run_id+'_'+str(sha)
+
 	if not args.run_id == None:
 		args.output_dir = os.path.join(args.output_dir, args.run_id)
 	if not(os.path.exists(args.output_dir)) and args.do_train:
