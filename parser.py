@@ -13,7 +13,7 @@ parser.add_argument('--scheduler', default='ReduceLROnPlateau', type=str,
                     help='The scheduler for learning rate during training')
 parser.add_argument('--warmup_proportion', default=0.1, type=float, 
                     help='warmup proportion for WarmupLinearScheduler')
-parser.add_argument('--model_architecture', default='resnet14_1', type=str,
+parser.add_argument('--model_architecture', default='resnet7_2_1', type=str,
                     help='Neural network architecture to be used')
 
 parser.add_argument('--image_dir',

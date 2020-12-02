@@ -32,7 +32,6 @@ def conv1x1(in_planes, out_planes, stride=1):
 
 
 class BasicBlock(nn.Module):
-    expansion = 1
     __constants__ = ['downsample']
 
     def __init__(self, inplanes, planes, stride=1,
@@ -68,20 +67,31 @@ class BasicBlock(nn.Module):
 
 
 class ResNet7_2_1(nn.Module):
+    """ A residual network 7_2_1 
+    with 7 "layers", 2x2 average pooling, and 1 fully connected layer.
+    """
 
     def __init__(self, block, blocks_per_layers, output_channels=3, 
-                 zero_init_residual=False, groups=1, width_per_group=64, 
-                 norm_layer=None):
+                 norm_layer=nn.BatchNorm2d, zero_init_residual=False):
+        """ Input batch_sizex2048x2048x1          ->
+            Conv1 batch_sizex512x512x8            ->
+            "layer1" batch_sizex256x256x8         ->
+            "layer2" batch_sizex128x128x16        ->
+            "layer3" batch_sizex64x64x32          ->
+            "layer4" batch_sizex32x32x64          ->
+            "layer5" batch_sizex16x16x128         ->
+            "layer6" batch_sizex8x8x192           ->
+            "layer7" batch_sizex4x4x192           ->
+            average pooling batch_sizex2x2x192    ->
+            fc layer batch_sizexoutput_channelsx1
+        """
         super(ResNet7_2_1, self).__init__()
-        if norm_layer is None:
-            norm_layer = nn.BatchNorm2d
+
         self._norm_layer = norm_layer
 
         self.inplanes = 8
         self.dilation = 1
 
-        self.groups = groups
-        self.base_width = width_per_group
         self.conv1 = nn.Conv2d(1, self.inplanes, kernel_size=7, stride=4, 
                                padding=3, bias=False)
         self.bn1 = norm_layer(self.inplanes)
@@ -116,22 +126,18 @@ class ResNet7_2_1(nn.Module):
                 elif isinstance(m, BasicBlock):
                     nn.init.constant_(m.bn2.weight, 0)
 
-    def _make_layer(self, block, planes, num_of_blocks, stride=1, dilate=False):
+    def _make_layer(self, block, planes, num_of_blocks, stride=1):
         norm_layer = self._norm_layer
+
         downsample = None
-        previous_dilation = self.dilation
-        if dilate:
-            self.dilation *= stride
-            stride = 1
-        if stride != 1 or self.inplanes != planes * block.expansion:
-            downsample = nn.Sequential(
-                conv1x1(self.inplanes, planes * block.expansion, stride),
-                norm_layer(planes * block.expansion))
+        if stride != 1 or self.inplanes != planes:
+            downsample = nn.Sequential(conv1x1(self.inplanes, planes, stride),
+                                       norm_layer(planes))
 
         layers = []
         layers.append(block(self.inplanes, planes, stride=stride, downsample=downsample,
                             norm_layer=norm_layer))
-        self.inplanes = planes * block.expansion
+        self.inplanes = planes
         for _ in range(1, num_of_blocks):
             layers.append(block(self.inplanes, planes, norm_layer=norm_layer))
 
@@ -163,15 +169,9 @@ class ResNet7_2_1(nn.Module):
         """ Save a model with its configuration file to a directory, so that it
             can be re-loaded using the `from_pretrained(save_directory)` class method.
         """
-        
+
         # Saving path should be a directory where the model and configuration can be saved
         assert os.path.isdir(save_directory)
-
-        # Only save the model it-self if we are using distributed training
-        model_to_save = self.module if hasattr(self, 'module') else self
-
-        # Save configuration file
-        # model_to_save.config.save_pretrained(save_directory)
 
         # If we save using the predefined names, we can load using `from_pretrained`
         if epoch == -1:
@@ -251,7 +251,7 @@ class ResNet7_2_1(nn.Module):
         return model
 
 
-def resnet14_1(block=BasicBlock, blocks_per_layers=[2, 2, 2, 2, 2, 2, 2], 
+def resnet7_2_1(block=BasicBlock, blocks_per_layers=[2, 2, 2, 2, 2, 2, 2], 
 			   pretrained=False, checkpoint=None, **kwargs):
     model = ResNet7_2_1(block, blocks_per_layers, **kwargs)
     if pretrained:

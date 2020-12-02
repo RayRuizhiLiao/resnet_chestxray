@@ -28,7 +28,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from model import resnet14_1
+from model import resnet7_2_1
 import parser
 import main_utils
 
@@ -117,8 +117,8 @@ def main():
 		# TODO: remove args.label_encoding
 		args.label_encoding = 'onehot'
 		output_channels = 4
-		if args.model_architecture == 'resnet14_1':
-			resnet_model = resnet14_1(output_channels=output_channels)
+		if args.model_architecture == 'resnet7_2_1':
+			resnet_model = resnet7_2_1(output_channels=output_channels)
 		resnet_model = resnet_model.to(device)
 
 		'''
@@ -137,8 +137,8 @@ def main():
 			args.label_encoding = 'onehot'
 			output_channels = 4
 
-			if args.model_architecture == 'resnet14_1':
-				resnet_model = resnet14_1(pretrained=True, 
+			if args.model_architecture == 'resnet7_2_1':
+				resnet_model = resnet7_2_1(pretrained=True, 
 										  checkpoint=args.checkpoint_path,
 										  output_channels=output_channels)
 			resnet_model = resnet_model.to(device)
