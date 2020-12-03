@@ -173,6 +173,12 @@ class ResNet7_2_1(nn.Module):
         # Saving path should be a directory where the model and configuration can be saved
         assert os.path.isdir(save_directory)
 
+        # Only save the model it-self if we are using distributed training
+        model_to_save = self.module if hasattr(self, 'module') else self
+
+        # Save configuration file
+        model_to_save.config.save_pretrained(save_directory)
+
         # If we save using the predefined names, we can load using `from_pretrained`
         if epoch == -1:
             output_model_file = os.path.join(save_directory, 'pytorch_model.bin')
