@@ -139,8 +139,8 @@ def main():
 
 			if args.model_architecture == 'resnet7_2_1':
 				resnet_model = resnet7_2_1(pretrained=True, 
-										  checkpoint=args.checkpoint_path,
-										  output_channels=output_channels)
+										   pretrained_model_path=args.checkpoint_path,
+										   output_channels=output_channels)
 			resnet_model = resnet_model.to(device)
 
 			'''

@@ -176,9 +176,6 @@ class ResNet7_2_1(nn.Module):
         # Only save the model it-self if we are using distributed training
         model_to_save = self.module if hasattr(self, 'module') else self
 
-        # Save configuration file
-        model_to_save.config.save_pretrained(save_directory)
-
         # If we save using the predefined names, we can load using `from_pretrained`
         if epoch == -1:
             output_model_file = os.path.join(save_directory, 'pytorch_model.bin')
@@ -196,7 +193,6 @@ class ResNet7_2_1(nn.Module):
         state_dict = kwargs.pop('state_dict', None)
         output_loading_info = kwargs.pop('output_loading_info', False)
 
-        print("Loading the model")
         # Instantiate the model
         model = cls(block, blocks_per_layers, **kwargs)
 
@@ -258,8 +254,8 @@ class ResNet7_2_1(nn.Module):
 
 
 def resnet7_2_1(block=BasicBlock, blocks_per_layers=[2, 2, 2, 2, 2, 2, 2], 
-			   pretrained=False, checkpoint=None, **kwargs):
+			    pretrained=False, pretrained_model_path=None, **kwargs):
     model = ResNet7_2_1(block, blocks_per_layers, **kwargs)
     if pretrained:
-        model = model.from_pretrained(checkpoint, block, blocks_per_layers, **kwargs)
+        model = model.from_pretrained(pretrained_model_path, block, blocks_per_layers, **kwargs)
     return model
