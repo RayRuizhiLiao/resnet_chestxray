@@ -45,7 +45,10 @@ def main():
 		"do_train and do_eval cannot be both True!"
 
 	# To track results from different commits (temporary)
-	args.run_id = args.run_id+'_'+str(sha)
+	if args.commit_sha == None:
+		args.run_id = args.run_id+'_'+str(sha)
+	else:
+		args.run_id = args.run_id+'_'+args.commit_sha
 
 	if not args.run_id == None:
 		args.output_dir = os.path.join(args.output_dir, args.run_id)

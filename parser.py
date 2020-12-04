@@ -37,6 +37,8 @@ parser.add_argument('--checkpoint_path',
                     help='Path of the checkpoint to be evaluated ')
 parser.add_argument('--eval_epoch', default=250,
                     help='The epoch that is used for evaluation')
+parser.add_argument('--commit_sha', default=None,
+                    type=str, help='Commit sha specified for evaluation')
 
 parser.add_argument('--do_train', default=False, action='store_true', 
         			help='Whether to perform training')
