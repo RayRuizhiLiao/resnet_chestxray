@@ -54,7 +54,5 @@ parser.add_argument('--evaluation_folds', default=[5],
                     nargs='+', type=int, help="folds for validation")
 parser.add_argument('--image_format', default='png',
                     help='The format of the images that the model is reading, by default png')
-parser.add_argument('--label_encoding', default='ordinal',
-                    help='The way that the label is encoded, either ordinal or onehot')
 
 def get_args(): return parser.parse_args()

@@ -91,7 +91,6 @@ def main():
 	print('Output directory:', args.output_dir)
 	print('Logging in:\t {}'.format(log_path))
 	print('Input image formet:', args.image_format)
-	print('Label encoding:', args.label_encoding)
 
 	if args.do_train:
 
@@ -117,8 +116,6 @@ def main():
 		'''
 		Create an instance of a resnet model
 		'''
-		# TODO: remove args.label_encoding
-		args.label_encoding = 'onehot'
 		output_channels = 4
 		if args.model_architecture == 'resnet7_2_1':
 			resnet_model = resnet7_2_1(output_channels=output_channels)
@@ -137,7 +134,6 @@ def main():
 			'''
 			Create an instance of a resnet model and load a checkpoint
 			'''
-			args.label_encoding = 'onehot'
 			output_channels = 4
 
 			if args.model_architecture == 'resnet7_2_1':
@@ -165,8 +161,7 @@ def main():
 			eval_log.write(str(round(eval_results['auc'][0],2))+'\n')
 			eval_log.write(str(round(eval_results['auc'][1],2))+'\n')
 			eval_log.write(str(round(eval_results['auc'][2],2))+'\n')
-			if args.label_encoding == 'onehot':
-				eval_log.write(str(round(eval_results['auc'][3],2))+'\n')
+			eval_log.write(str(round(eval_results['auc'][3],2))+'\n')
 			eval_log.write(str(round(eval_results['pairwise_auc']['0v1'],2))+'\n')
 			eval_log.write(str(round(eval_results['pairwise_auc']['0v2'],2))+'\n')
 			eval_log.write(str(round(eval_results['pairwise_auc']['0v3'],2))+'\n')

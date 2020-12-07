@@ -78,11 +78,7 @@ def train(args, device, model):
 	''' 
 	Create an instance of loss
 	'''
-	# TODO: get rid of label_encoding
-	if args.label_encoding == 'ordinal':
-		BCE_loss_criterion = BCEWithLogitsLoss().to(device)
-	if args.label_encoding == 'onehot':
-		BCE_loss_criterion = BCELoss().to(device)
+	BCE_loss_criterion = BCELoss().to(device)
 
 	'''
 	Create an instance of traning data loader
@@ -92,8 +88,7 @@ def train(args, device, model):
 													    args.training_folds,
 													    args.evaluation_folds)
 	cxr_dataset = CXRImageDataset(train_dicom_ids, train_labels, args.image_dir,
-	                              transform=xray_transform, image_format=args.image_format,
-	                              encoding=args.label_encoding)
+	                              transform=xray_transform, image_format=args.image_format)
 	data_loader = DataLoader(cxr_dataset, batch_size=args.batch_size,
 	                         shuffle=True, num_workers=8,
 	                         pin_memory=True)
@@ -200,11 +195,8 @@ def evaluate(args, device, model):
 	'''
 	logger = logging.getLogger(__name__)
 
-	# TODO: get rid of label_encoding
-	if args.label_encoding == 'onehot':
-		output_channel_encoding = 'multiclass'
-	elif args.label_encoding == 'ordinal':
-		output_channel_encoding = 'multilabel'
+	# TODO: remove output_channel_encoding
+	output_channel_encoding = 'multiclass'
 
 	'''
 	Create an instance of evaluation data loader
@@ -215,8 +207,7 @@ def evaluate(args, device, model):
 													  args.evaluation_folds)
 	cxr_dataset = CXRImageDataset(eval_dicom_ids, eval_labels, args.image_dir,
 								  transform=xray_transform, 
-								  image_format=args.image_format,
-								  encoding=args.label_encoding)
+								  image_format=args.image_format)
 	data_loader = DataLoader(cxr_dataset, batch_size=args.batch_size,
 	                         num_workers=8, pin_memory=True)
 	print('Total number of evaluation images: ', len(cxr_dataset))
@@ -271,16 +262,12 @@ def evaluate(args, device, model):
 	# To store the precision, recall, f1 of a single run of evaluate
 	results_img = {}
 
-	if args.label_encoding == 'onehot':
-		preds = preds_logits
+	preds = preds_logits
 
-	if args.label_encoding == 'onehot':
-		labels_raw = np.argmax(labels, axis=1)
-		acc_f1_img, _, _ = eval_metrics.compute_acc_f1_metrics(labels_raw, preds_logits,
-														       output_channel_encoding=output_channel_encoding)
-	else:
-		acc_f1_img, _, _ = eval_metrics.compute_acc_f1_metrics(labels, preds_logits,
-														       output_channel_encoding=output_channel_encoding) 
+
+	labels_raw = np.argmax(labels, axis=1)
+	acc_f1_img, _, _ = eval_metrics.compute_acc_f1_metrics(labels_raw, preds_logits,
+														   output_channel_encoding=output_channel_encoding)
 	results_img.update(acc_f1_img)
 
 	auc_images, pairwise_auc_images = eval_metrics.compute_auc(labels, preds,
@@ -296,18 +283,13 @@ def evaluate(args, device, model):
 	results_img['mse'] = eval_metrics.compute_mse(preds_logits, labels,
 												  output_channel_encoding=output_channel_encoding)
 
-	if args.label_encoding == 'ordinal':
-		logger.info("  AUC(0v123) = %4f", results_img['auc'][0])
-		logger.info("  AUC(01v23) = %4f", results_img['auc'][1])
-		logger.info("  AUC(012v3) = %4f", results_img['auc'][2])
-	elif args.label_encoding == 'onehot':
-		logger.info("  AUC(0v123) = %4f", results_img['auc'][0])
-		logger.info("  AUC(1v023) = %4f", results_img['auc'][1])
-		logger.info("  AUC(2v013) = %4f", results_img['auc'][2])
-		logger.info("  AUC(3v012) = %4f", results_img['auc'][3])
-		logger.info("  AUC(0v123) = %4f", results_img['ordinal_aucs'][0])
-		logger.info("  AUC(01v23) = %4f", results_img['ordinal_aucs'][1])
-		logger.info("  AUC(012v3) = %4f", results_img['ordinal_aucs'][2])
+	logger.info("  AUC(0v123) = %4f", results_img['auc'][0])
+	logger.info("  AUC(1v023) = %4f", results_img['auc'][1])
+	logger.info("  AUC(2v013) = %4f", results_img['auc'][2])
+	logger.info("  AUC(3v012) = %4f", results_img['auc'][3])
+	logger.info("  AUC(0v123) = %4f", results_img['ordinal_aucs'][0])
+	logger.info("  AUC(01v23) = %4f", results_img['ordinal_aucs'][1])
+	logger.info("  AUC(012v3) = %4f", results_img['ordinal_aucs'][2])
 
 	logger.info("  AUC(0v1) = %4f", results_img['pairwise_auc']['0v1'])
 	logger.info("  AUC(0v2) = %4f", results_img['pairwise_auc']['0v2'])

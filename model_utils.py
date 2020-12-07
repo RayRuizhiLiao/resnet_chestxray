@@ -62,8 +62,7 @@ def load_image(img_path):
 class CXRImageDataset(Dataset):
     
     def __init__(self, img_ids, labels, root_dir, 
-    			 transform=None, image_format='png',
-    			 encoding='ordinal'):
+    			 transform=None, image_format='png'):
         """
         Args:
             csv_file (string): Path to the csv file with annotations.
@@ -76,7 +75,6 @@ class CXRImageDataset(Dataset):
         self.root_dir = root_dir
         self.transform = transform
         self.image_format = image_format
-        self.encoding = encoding
 
     def __len__(self):
         return len(self.img_ids)
@@ -94,10 +92,7 @@ class CXRImageDataset(Dataset):
         image = image.reshape(1, image.shape[0], image.shape[1])
         
         label = self.labels[img_id]
-        if self.encoding == 'ordinal':
-        	label = convert_to_ordinal(label[0])
-        if self.encoding == 'onehot':
-        	label = convert_to_onehot(label[0])
+        label = convert_to_onehot(label[0])
         label = torch.tensor(label, dtype=torch.float32)
 
         sample = [image, label]
