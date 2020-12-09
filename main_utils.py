@@ -233,11 +233,8 @@ def evaluate(args, device, model):
 
 	# For storing labels and model predictions
 	preds = []
-	preds_logits = []
 	labels = []
 	embeddings = []
-	# preds_v = []
-	# labels_v = []
 
 	model.eval()
 	epoch_iterator = tqdm(data_loader, desc="Iteration")
@@ -252,124 +249,51 @@ def evaluate(args, device, model):
 			label = label.detach().cpu().numpy()
 			pred = logistic.cdf(output)
 			for j in range(len(pred)):
-				preds_logits.append(output[j])
 				preds.append(pred[j])
 				labels.append(label[j])
 				embeddings.append(embedding[j])
-				# preds_v.append(np.sum(pred[j]))
-				# labels_v.append(np.sum(label[j]))
 
-	# To store the precision, recall, f1 of a single run of evaluate
-	results_img = {}
-
-	preds = preds_logits
+	# To store evaluation results
+	eval_results = {}
 
 
 	labels_raw = np.argmax(labels, axis=1)
-	acc_f1_img, _, _ = eval_metrics.compute_acc_f1_metrics(labels_raw, preds_logits,
+	acc_f1_img, _, _ = eval_metrics.compute_acc_f1_metrics(labels_raw, preds,
 														   output_channel_encoding=output_channel_encoding)
-	results_img.update(acc_f1_img)
+	eval_results.update(acc_f1_img)
 
 	auc_images, pairwise_auc_images = eval_metrics.compute_auc(labels, preds,
 															   output_channel_encoding=output_channel_encoding)
 
 	ordinal_aucs = eval_metrics.compute_ordinal_auc_onehot_encoded(labels, preds)
 
-	results_img['auc'] = auc_images
-	results_img['pairwise_auc'] = pairwise_auc_images
+	eval_results['auc'] = auc_images
+	eval_results['pairwise_auc'] = pairwise_auc_images
 
-	results_img['ordinal_aucs'] = ordinal_aucs
+	eval_results['ordinal_aucs'] = ordinal_aucs
 
-	results_img['mse'] = eval_metrics.compute_mse(preds_logits, labels,
+	eval_results['mse'] = eval_metrics.compute_mse(preds, labels,
 												  output_channel_encoding=output_channel_encoding)
 
-	logger.info("  AUC(0v123) = %4f", results_img['auc'][0])
-	logger.info("  AUC(1v023) = %4f", results_img['auc'][1])
-	logger.info("  AUC(2v013) = %4f", results_img['auc'][2])
-	logger.info("  AUC(3v012) = %4f", results_img['auc'][3])
-	logger.info("  AUC(0v123) = %4f", results_img['ordinal_aucs'][0])
-	logger.info("  AUC(01v23) = %4f", results_img['ordinal_aucs'][1])
-	logger.info("  AUC(012v3) = %4f", results_img['ordinal_aucs'][2])
+	logger.info("  AUC(0v123) = %4f", eval_results['auc'][0])
+	logger.info("  AUC(1v023) = %4f", eval_results['auc'][1])
+	logger.info("  AUC(2v013) = %4f", eval_results['auc'][2])
+	logger.info("  AUC(3v012) = %4f", eval_results['auc'][3])
+	logger.info("  AUC(0v123) = %4f", eval_results['ordinal_aucs'][0])
+	logger.info("  AUC(01v23) = %4f", eval_results['ordinal_aucs'][1])
+	logger.info("  AUC(012v3) = %4f", eval_results['ordinal_aucs'][2])
 
-	logger.info("  AUC(0v1) = %4f", results_img['pairwise_auc']['0v1'])
-	logger.info("  AUC(0v2) = %4f", results_img['pairwise_auc']['0v2'])
-	logger.info("  AUC(0v3) = %4f", results_img['pairwise_auc']['0v3'])
-	logger.info("  AUC(1v2) = %4f", results_img['pairwise_auc']['1v2'])
-	logger.info("  AUC(1v3) = %4f", results_img['pairwise_auc']['1v3'])
-	logger.info("  AUC(2v3) = %4f", results_img['pairwise_auc']['2v3'])
+	logger.info("  AUC(0v1) = %4f", eval_results['pairwise_auc']['0v1'])
+	logger.info("  AUC(0v2) = %4f", eval_results['pairwise_auc']['0v2'])
+	logger.info("  AUC(0v3) = %4f", eval_results['pairwise_auc']['0v3'])
+	logger.info("  AUC(1v2) = %4f", eval_results['pairwise_auc']['1v2'])
+	logger.info("  AUC(1v3) = %4f", eval_results['pairwise_auc']['1v3'])
+	logger.info("  AUC(2v3) = %4f", eval_results['pairwise_auc']['2v3'])
 
-	logger.info("  MSE = %4f", results_img['mse'])
+	logger.info("  MSE = %4f", eval_results['mse'])
 
-	logger.info("  Macro_F1 = %4f", results_img['macro_f1'])
+	logger.info("  Macro_F1 = %4f", eval_results['macro_f1'])
 
-	logger.info("  Accuracy = %4f", results_img['accuracy'])
+	logger.info("  Accuracy = %4f", eval_results['accuracy'])
 
-	return results_img, embeddings, labels_raw
-
-# # Computing AUC
-# def compute_auc(labels, preds):
-#     if len(labels) != len(preds):
-#         raise ValueError('The size of the labels does not match the size the preds!')
-
-#     num_datapoints = len(labels)
-#     num_channels = len(labels[0])
-#     e_y = np.zeros(num_datapoints) # Label y as an integer in {0,1,2,3}
-#     e_pred = np.zeros(num_datapoints) # Probabilistic expection of the prediction
-#     aucs = []
-#     for i in range(num_channels):
-#         y = []
-#         pred = []
-#         for j in range(num_datapoints):
-#             y.append(labels[j][i])
-#             pred.append(preds[j][i])
-#             e_y[j] += labels[j][i]
-#             e_pred[j] += preds[j][i]
-
-#         fpr, tpr, thresholds = sklearn.metrics.roc_curve(y, pred, pos_label=1)
-#         auc_val = round(sklearn.metrics.auc(fpr, tpr), 2)
-#         aucs.append(auc_val)
-
-#     pairwise_aucs = {}
-
-#     def compute_pairwise_auc(all_y, all_pred, label0, label1):
-#         y = []
-#         pred = []
-#         for i in range(len(all_y)):
-#             if all_y[i] == label0 or all_y[i] == label1:
-#                 y.append(e_y[i])
-#                 pred.append(all_pred[i])
-#         fpr, tpr, thresholds = sklearn.metrics.roc_curve(y, pred, pos_label=label1)
-#         return round(sklearn.metrics.auc(fpr, tpr), 2)
-
-#     pairwise_aucs['0v1'] = compute_pairwise_auc(e_y, e_pred, 0, 1)
-#     pairwise_aucs['0v2'] = compute_pairwise_auc(e_y, e_pred, 0, 2)
-#     pairwise_aucs['0v3'] = compute_pairwise_auc(e_y, e_pred, 0, 3)
-#     pairwise_aucs['1v2'] = compute_pairwise_auc(e_y, e_pred, 1, 2)
-#     pairwise_aucs['1v3'] = compute_pairwise_auc(e_y, e_pred, 1, 3)
-#     pairwise_aucs['2v3'] = compute_pairwise_auc(e_y, e_pred, 2, 3)
-
-#     return aucs, pairwise_aucs
-
-# # Computing accuracy
-# def compute_accuracy(labels, preds):
-#     new_labels = [np.sum(ordinal_label) for ordinal_label in labels]
-#     preds = [convert_sigmoid_prob_to_labels(pred) for pred in preds]
-
-#     accuracy = accuracy_score(new_labels, preds)
-
-#     return accuracy
-
-# # Converting logtis to labels by thresholding them with 0.5
-# def convert_sigmoid_prob_to_labels(pred):
-#     sigmoid_pred = logistic.cdf(pred)
-#     threshold = 0.5
-#     if sigmoid_pred[0] > threshold:
-#         if sigmoid_pred[1] > threshold:
-#             if sigmoid_pred[2] > threshold:
-#                 return 3
-#             else:
-#                     return 2
-#         else:
-#             return 1
-#     else:
-#         return 0
+	return eval_results, embeddings, labels_raw
