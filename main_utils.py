@@ -15,6 +15,7 @@ from sklearn.metrics import precision_recall_fscore_support
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import mean_squared_error as mse
 import csv
+from scipy.special import softmax
 
 import torch
 import torchvision
@@ -154,7 +155,7 @@ def train(args, device, model):
 
 	        # Forward + backward + optimize
 	        outputs = model(inputs)
-	        loss = BCE_loss_criterion(outputs[0], labels)
+	        loss = BCE_loss_criterion(outputs[0], labels) #TODO: check this outputs[0]
 	        loss.backward()
 	        optimizer.step()
 
@@ -244,10 +245,17 @@ def evaluate(args, device, model):
 		image, label = batch
 		with torch.no_grad():
 			output, embedding = model(image)
-			output = output.detach().cpu().numpy()
+			pred = output.detach().cpu().numpy()
 			embedding = embedding.detach().cpu().numpy()
 			label = label.detach().cpu().numpy()
-			pred = logistic.cdf(output)
+			# TODO: remove this piece
+			# print(output)
+			# pred = logistic.cdf(output)
+			# print(pred)
+			# preds_logits=logistic.cdf(pred)
+			# print(preds_logits)
+			# print(softmax(preds_logits, axis=1))
+			# print(pred)
 			for j in range(len(pred)):
 				preds.append(pred[j])
 				labels.append(label[j])
@@ -256,44 +264,40 @@ def evaluate(args, device, model):
 	# To store evaluation results
 	eval_results = {}
 
-
 	labels_raw = np.argmax(labels, axis=1)
-	acc_f1_img, _, _ = eval_metrics.compute_acc_f1_metrics(labels_raw, preds,
-														   output_channel_encoding=output_channel_encoding)
-	eval_results.update(acc_f1_img)
+	results_acc_f1, _, _ = eval_metrics.compute_acc_f1_metrics(labels_raw, preds)
+	eval_results.update(results_acc_f1)
 
-	auc_images, pairwise_auc_images = eval_metrics.compute_auc(labels, preds,
-															   output_channel_encoding=output_channel_encoding)
+	eval_results['mse'] = eval_metrics.compute_mse(labels_raw, preds)
 
-	ordinal_aucs = eval_metrics.compute_ordinal_auc_onehot_encoded(labels, preds)
+	aucs = eval_metrics.compute_auc(labels, preds)
 
-	eval_results['auc'] = auc_images
-	eval_results['pairwise_auc'] = pairwise_auc_images
+	# ordinal_aucs = eval_metrics.compute_ordinal_auc_onehot_encoded(labels, preds)
 
-	eval_results['ordinal_aucs'] = ordinal_aucs
+	eval_results['auc'] = aucs
+	# eval_results['pairwise_auc'] = pairwise_auc_images
 
-	eval_results['mse'] = eval_metrics.compute_mse(preds, labels,
-												  output_channel_encoding=output_channel_encoding)
+	# eval_results['ordinal_aucs'] = ordinal_aucs
+
+
 
 	logger.info("  AUC(0v123) = %4f", eval_results['auc'][0])
 	logger.info("  AUC(1v023) = %4f", eval_results['auc'][1])
 	logger.info("  AUC(2v013) = %4f", eval_results['auc'][2])
 	logger.info("  AUC(3v012) = %4f", eval_results['auc'][3])
-	logger.info("  AUC(0v123) = %4f", eval_results['ordinal_aucs'][0])
-	logger.info("  AUC(01v23) = %4f", eval_results['ordinal_aucs'][1])
-	logger.info("  AUC(012v3) = %4f", eval_results['ordinal_aucs'][2])
+	# logger.info("  AUC(0v123) = %4f", eval_results['ordinal_aucs'][0])
+	# logger.info("  AUC(01v23) = %4f", eval_results['ordinal_aucs'][1])
+	# logger.info("  AUC(012v3) = %4f", eval_results['ordinal_aucs'][2])
 
-	logger.info("  AUC(0v1) = %4f", eval_results['pairwise_auc']['0v1'])
-	logger.info("  AUC(0v2) = %4f", eval_results['pairwise_auc']['0v2'])
-	logger.info("  AUC(0v3) = %4f", eval_results['pairwise_auc']['0v3'])
-	logger.info("  AUC(1v2) = %4f", eval_results['pairwise_auc']['1v2'])
-	logger.info("  AUC(1v3) = %4f", eval_results['pairwise_auc']['1v3'])
-	logger.info("  AUC(2v3) = %4f", eval_results['pairwise_auc']['2v3'])
+	# logger.info("  AUC(0v1) = %4f", eval_results['pairwise_auc']['0v1'])
+	# logger.info("  AUC(0v2) = %4f", eval_results['pairwise_auc']['0v2'])
+	# logger.info("  AUC(0v3) = %4f", eval_results['pairwise_auc']['0v3'])
+	# logger.info("  AUC(1v2) = %4f", eval_results['pairwise_auc']['1v2'])
+	# logger.info("  AUC(1v3) = %4f", eval_results['pairwise_auc']['1v3'])
+	# logger.info("  AUC(2v3) = %4f", eval_results['pairwise_auc']['2v3'])
 
 	logger.info("  MSE = %4f", eval_results['mse'])
-
 	logger.info("  Macro_F1 = %4f", eval_results['macro_f1'])
-
 	logger.info("  Accuracy = %4f", eval_results['accuracy'])
 
 	return eval_results, embeddings, labels_raw
