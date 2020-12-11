@@ -96,9 +96,9 @@ def train(args, device, model):
 	print('Total number of training images: ', len(cxr_dataset))
 
 	'''
-	Create an instance of optimizer (AdamW) and learning rate scheduler
+	Create an instance of optimizer and learning rate scheduler
 	'''
-	optimizer = optim.AdamW(model.parameters(), 
+	optimizer = optim.Adam(model.parameters(), 
 							lr=args.init_lr)
 	if args.scheduler == 'WarmupLinearSchedule':
 		num_train_optimization_steps = len(data_loader) * args.num_train_epochs
