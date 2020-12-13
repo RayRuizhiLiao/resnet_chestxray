@@ -225,12 +225,11 @@ def evaluate(args, device, model):
 	logger.info("  Batch size: %d", args.batch_size)
 	logger.info("  Model checkpoint {}:".format(args.checkpoint_path))
 
-	logger.info("***** Evaluating the model *****")
-
-
 	'''
 	Evaluate the model
 	'''
+
+	logger.info("***** Evaluating the model *****")
 
 	# For storing labels and model predictions
 	preds = []
@@ -250,7 +249,7 @@ def evaluate(args, device, model):
 			label = label.detach().cpu().numpy()
 			# TODO: remove this piece
 			# print(output)
-			# pred = logistic.cdf(output)
+			# pred = logistic.cdf(pred)
 			# print(pred)
 			# preds_logits=logistic.cdf(pred)
 			# print(preds_logits)
@@ -261,42 +260,41 @@ def evaluate(args, device, model):
 				labels.append(label[j])
 				embeddings.append(embedding[j])
 
-	# To store evaluation results
+	labels_raw = np.argmax(labels, axis=1)
 	eval_results = {}
 
-	labels_raw = np.argmax(labels, axis=1)
-	results_acc_f1, _, _ = eval_metrics.compute_acc_f1_metrics(labels_raw, preds)
-	eval_results.update(results_acc_f1)
+	ordinal_aucs = eval_metrics.compute_ordinal_auc(labels, preds)
+	eval_results['ordinal_aucs'] = ordinal_aucs
+
+	pairwise_aucs = eval_metrics.compute_pairwise_auc(labels, preds)
+	eval_results['pairwise_auc'] = pairwise_aucs
+
+	multiclass_aucs = eval_metrics.compute_multiclass_auc(labels, preds)
+	eval_results['multiclass_aucs'] = multiclass_aucs
 
 	eval_results['mse'] = eval_metrics.compute_mse(labels_raw, preds)
 
-	aucs = eval_metrics.compute_auc(labels, preds)
+	results_acc_f1, _, _ = eval_metrics.compute_acc_f1_metrics(labels_raw, preds)
+	eval_results.update(results_acc_f1)
 
-	# ordinal_aucs = eval_metrics.compute_ordinal_auc_onehot_encoded(labels, preds)
+	logger.info("  AUC(0v123) = %4f", eval_results['ordinal_aucs'][0])
+	logger.info("  AUC(01v23) = %4f", eval_results['ordinal_aucs'][1])
+	logger.info("  AUC(012v3) = %4f", eval_results['ordinal_aucs'][2])
 
-	eval_results['auc'] = aucs
-	# eval_results['pairwise_auc'] = pairwise_auc_images
+	logger.info("  AUC(0v1) = %4f", eval_results['pairwise_auc']['0v1'])
+	logger.info("  AUC(0v2) = %4f", eval_results['pairwise_auc']['0v2'])
+	logger.info("  AUC(0v3) = %4f", eval_results['pairwise_auc']['0v3'])
+	logger.info("  AUC(1v2) = %4f", eval_results['pairwise_auc']['1v2'])
+	logger.info("  AUC(1v3) = %4f", eval_results['pairwise_auc']['1v3'])
+	logger.info("  AUC(2v3) = %4f", eval_results['pairwise_auc']['2v3'])
 
-	# eval_results['ordinal_aucs'] = ordinal_aucs
-
-
-
-	logger.info("  AUC(0v123) = %4f", eval_results['auc'][0])
-	logger.info("  AUC(1v023) = %4f", eval_results['auc'][1])
-	logger.info("  AUC(2v013) = %4f", eval_results['auc'][2])
-	logger.info("  AUC(3v012) = %4f", eval_results['auc'][3])
-	# logger.info("  AUC(0v123) = %4f", eval_results['ordinal_aucs'][0])
-	# logger.info("  AUC(01v23) = %4f", eval_results['ordinal_aucs'][1])
-	# logger.info("  AUC(012v3) = %4f", eval_results['ordinal_aucs'][2])
-
-	# logger.info("  AUC(0v1) = %4f", eval_results['pairwise_auc']['0v1'])
-	# logger.info("  AUC(0v2) = %4f", eval_results['pairwise_auc']['0v2'])
-	# logger.info("  AUC(0v3) = %4f", eval_results['pairwise_auc']['0v3'])
-	# logger.info("  AUC(1v2) = %4f", eval_results['pairwise_auc']['1v2'])
-	# logger.info("  AUC(1v3) = %4f", eval_results['pairwise_auc']['1v3'])
-	# logger.info("  AUC(2v3) = %4f", eval_results['pairwise_auc']['2v3'])
+	logger.info("  AUC(0v123) = %4f", eval_results['multiclass_aucs'][0])
+	logger.info("  AUC(1v023) = %4f", eval_results['multiclass_aucs'][1])
+	logger.info("  AUC(2v013) = %4f", eval_results['multiclass_aucs'][2])
+	logger.info("  AUC(3v012) = %4f", eval_results['multiclass_aucs'][3])
 
 	logger.info("  MSE = %4f", eval_results['mse'])
+
 	logger.info("  Macro_F1 = %4f", eval_results['macro_f1'])
 	logger.info("  Accuracy = %4f", eval_results['accuracy'])
 

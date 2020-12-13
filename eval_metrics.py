@@ -13,83 +13,66 @@ import numpy as np
 import sklearn
 from scipy.special import softmax
 
-'''
-Evaluation related helpers
-'''
-# in the case of gold labels, convert ordinal labels to predictions
-def convert_ordinal_label_to_labels(ordinal_label):
-    return np.sum(ordinal_label)
-    # ordinal_label = "".join(str(v) for v in ordinal_label.tolist())
-    # if ordinal_label == '000':
-    #     return 0
-    # elif ordinal_label == '100':
-    #     return 1
-    # elif ordinal_label == '110':
-    #     return 2
-    # elif ordinal_label == '111':
-    #     return 3
-    # else:
-    #     raise Exception("No other possibilities of ordinal labels are possible")
 
-def convert_sigmoid_prob_to_labels(pred):
-    sigmoid_pred = logistic.cdf(pred)
-    threshold = 0.5
-    if sigmoid_pred[0] > threshold:
-        if sigmoid_pred[1] > threshold:
-            if sigmoid_pred[2] > threshold:
-                return 3
-            else:
-                    return 2
-        else:
-            return 1
-    else:
-        return 0
-
-# Given the 4 channel output of multiclass, compute the 3 channel ordinal auc
-def compute_ordinal_auc_from_multiclass(labels_raw, preds):
-    if len(labels_raw) != len(preds):
-        raise ValueError('The size of the labels does not match the size the preds!')
-    num_datapoints = len(labels_raw) # labels_raw needs to be between 0 and 1
-    if len(preds[0]) != 4:
-        raise ValueError('This auc can only be computed for multiclass')
-    desired_channels = 3
-    ordinal_aucs = [] # 0v123, 01v23, 012v3
-    for i in range(desired_channels):
-        y = []
-        pred = []
-        for j in range(num_datapoints):
-            y.append(min(1.0, max(0.0, labels_raw[j] - i))) # if gold is 3 and channel is 0v123, then y is 1
-            pred.append(sum(preds[j][i+1 : desired_channels+1])) # P(severity >=1) = P(severity=1) + P(severity=2) + P(severity=3)
-        fpr, tpr, thresholds = sklearn.metrics.roc_curve(y, pred, pos_label=1)
-        ordinal_auc_val = round(sklearn.metrics.auc(fpr, tpr), 4)
-        ordinal_aucs.append(ordinal_auc_val)
-    return ordinal_aucs
-
-# Given the 4 channel output of multiclass, compute the 3 channel ordinal auc
-def compute_ordinal_auc_onehot_encoded(labels, preds):
-    if len(labels) != len(preds):
-        raise ValueError('The size of the labels does not match the size the preds!')
-    num_datapoints = len(labels)
-    if len(preds[0]) != 4:
-        raise ValueError('This auc can only be computed for multiclass')
-    desired_channels = 3
-    ordinal_aucs = [] # 0v123, 01v23, 012v3
-    for i in range(desired_channels):
-        y = []
-        pred = []
-        for j in range(num_datapoints):
-            y.append(sum(labels[j][i+1 : desired_channels+1])) # P(severity >=1) = P(severity=1) + P(severity=2) + P(severity=3)
-            pred.append(sum(preds[j][i+1 : desired_channels+1])) # P(severity >=1) = P(severity=1) + P(severity=2) + P(severity=3)
-        fpr, tpr, thresholds = sklearn.metrics.roc_curve(y, pred, pos_label=1)
-        ordinal_auc_val = round(sklearn.metrics.auc(fpr, tpr), 4)
-        ordinal_aucs.append(ordinal_auc_val)
-    return ordinal_aucs
-
-def compute_auc(labels, preds):
-    ''' Compute AUCs given
+def compute_pairwise_auc(labels, preds):
+    ''' Compute pariwise AUCs given
         labels (a batch of 4-class one-hot labels) and
         preds (a batch of predictions as 4-class probabilities)
     '''
+
+    pairwise_aucs = {}
+
+    def _pairwise_auc(y_all, pred_all, channel0, channel1):
+        num_datapoints = np.shape(pred_all)[0]
+
+        y = []
+        pred = []
+        for j in range(num_datapoints):
+            if y_all[j][channel0] == 1 or y_all[j][channel1] == 1: # Only includer "relavent" predictions/labels
+                y.append(y_all[j][channel1])
+                pred.append(pred_all[j][channel1]/(pred_all[j][channel0]+pred_all[j][channel1]))
+        fpr, tpr, thresholds = sklearn.metrics.roc_curve(y, pred, pos_label=1)
+        return round(sklearn.metrics.auc(fpr, tpr), 4)
+
+    pairwise_aucs['0v1'] = _pairwise_auc(labels, preds, 0, 1)
+    pairwise_aucs['0v2'] = _pairwise_auc(labels, preds, 0, 2)
+    pairwise_aucs['0v3'] = _pairwise_auc(labels, preds, 0, 3)
+    pairwise_aucs['1v2'] = _pairwise_auc(labels, preds, 1, 2)
+    pairwise_aucs['1v3'] = _pairwise_auc(labels, preds, 1, 3)
+    pairwise_aucs['2v3'] = _pairwise_auc(labels, preds, 2, 3)
+
+    return pairwise_aucs
+
+def compute_ordinal_auc(labels, preds):
+    ''' Compute ordinal AUCs given
+        labels (a batch of 4-class one-hot labels) and
+        preds (a batch of predictions as 4-class probabilities)
+    '''
+
+    assert np.shape(labels) == np.shape(preds) # size(labels)=(N,C);size(preds)=(N,C)
+
+    num_datapoints = np.shape(preds)[0]
+    num_channels = np.shape(preds)[1]
+    cutoff_channels = num_channels-1
+
+    ordinal_aucs = [] # 0v123, 01v23, 012v3
+    for i in range(cutoff_channels):
+        y = []
+        pred = []
+        for j in range(num_datapoints):
+            y.append(sum(labels[j][i+1:])) # P(severity >=1) = P(severity=1) + P(severity=2) + P(severity=3)
+            pred.append(sum(preds[j][i+1:])) # P(severity >=1) = P(severity=1) + P(severity=2) + P(severity=3)
+        fpr, tpr, thresholds = sklearn.metrics.roc_curve(y, pred, pos_label=1)
+        ordinal_aucs.append(round(sklearn.metrics.auc(fpr, tpr), 4))
+    
+    return ordinal_aucs
+
+def compute_multiclass_auc(labels, preds):
+    ''' Compute multiclass AUCs given
+        labels (a batch of 4-class one-hot labels) and
+        preds (a batch of predictions as 4-class probabilities)
+    '''
+
     assert np.shape(labels) == np.shape(preds) # size(labels)=(N,C);size(preds)=(N,C)
 
     num_datapoints = np.shape(preds)[0]
@@ -98,7 +81,6 @@ def compute_auc(labels, preds):
     labels = np.array(labels)
     preds = np.array(preds)
     aucs = []
-
     for i in range(num_channels):
         fpr, tpr, thresholds = sklearn.metrics.roc_curve(labels[:,i], preds[:,i], pos_label=1)
         aucs.append(round(sklearn.metrics.auc(fpr, tpr), 4))
