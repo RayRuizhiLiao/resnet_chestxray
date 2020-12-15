@@ -97,7 +97,7 @@ class CXRImageDataset(Dataset):
         label = torch.tensor(label, dtype=torch.float32)
         label_raw = torch.tensor(label_raw, dtype=torch.int)
 
-        sample = [image, label. label_raw]
+        sample = [image, label, label_raw]
 
         return sample
 
