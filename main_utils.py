@@ -79,8 +79,8 @@ def train(args, device, model):
 	''' 
 	Create an instance of loss
 	'''
-	# BCE_loss_criterion = BCELoss().to(device)
-	CE_loss_criterion = CrossEntropyLoss().to(device)
+	BCE_loss_criterion = BCELoss().to(device)
+	# CE_loss_criterion = CrossEntropyLoss().to(device)
 
 	'''
 	Create an instance of traning data loader
@@ -156,8 +156,8 @@ def train(args, device, model):
 
 	        # Forward + backward + optimize
 	        outputs = model(inputs)
-	        # loss = BCE_loss_criterion(outputs[0], labels) #TODO: check this outputs[0]
-	        loss = CE_loss_criterion(outputs[-1], labels_raw)
+	        loss = BCE_loss_criterion(outputs[0], labels) #TODO: check this outputs[0]
+	        #loss = CE_loss_criterion(outputs[-1], labels_raw)
 	        loss.backward()
 	        optimizer.step()
 
