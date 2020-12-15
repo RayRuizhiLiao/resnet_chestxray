@@ -92,10 +92,11 @@ class CXRImageDataset(Dataset):
         image = image.reshape(1, image.shape[0], image.shape[1])
         
         label = self.labels[img_id]
+        label_raw = label[0]
         label = convert_to_onehot(label[0])
         label = torch.tensor(label, dtype=torch.float32)
 
-        sample = [image, label]
+        sample = [image, label. label_raw]
 
         return sample
 

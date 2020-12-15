@@ -158,10 +158,10 @@ class ResNet7_2_1(nn.Module):
         
         x = self.avgpool(x)
         z = torch.flatten(x, 1)
-        y = self.fc1(z)
-        y = self.softmax(y)
+        y_logits = self.fc1(z)
+        y = self.softmax(y_logits)
 
-        return y, z
+        return y, z, y_logits
 
     # based on 
     # https://github.com/huggingface/transformers/blob/v1.0.0/pytorch_transformers/modeling_utils.py

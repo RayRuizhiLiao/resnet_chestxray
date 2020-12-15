@@ -22,7 +22,7 @@ import torchvision
 from pytorch_transformers.optimization import WarmupLinearSchedule
 import torch.optim as optim
 import torch.optim.lr_scheduler as lr_scheduler
-from torch.nn import BCEWithLogitsLoss, BCELoss
+from torch.nn import BCEWithLogitsLoss, BCELoss, CrossEntropyLoss
 from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import DataLoader
 
@@ -79,7 +79,8 @@ def train(args, device, model):
 	''' 
 	Create an instance of loss
 	'''
-	BCE_loss_criterion = BCELoss().to(device)
+	# BCE_loss_criterion = BCELoss().to(device)
+	CE_loss_criterion = CrossEntropyLoss().to(device)
 
 	'''
 	Create an instance of traning data loader
@@ -100,7 +101,7 @@ def train(args, device, model):
 	'''
 	optimizer = optim.Adam(model.parameters(), 
 							lr=args.init_lr)
-	if args.scheduler == 'WarmupLinearSchedule':
+	if args.scheduler == 'WarmupLinearSchedule': # TODO: remove WarmupLinearSchedule
 		num_train_optimization_steps = len(data_loader) * args.num_train_epochs
 		args.warmup_steps = args.warmup_proportion * num_train_optimization_steps
 		scheduler = WarmupLinearSchedule(optimizer, warmup_steps=args.warmup_steps,
@@ -148,14 +149,15 @@ def train(args, device, model):
 	    for i, batch in enumerate(epoch_iterator, 0):
 	        # Get the batch 
 	        batch = tuple(t.to(device, non_blocking=True) for t in batch)
-	        inputs, labels = batch
+	        inputs, labels, labels_raw = batch
 
 	        # Zero the parameter gradients
 	        optimizer.zero_grad()
 
 	        # Forward + backward + optimize
 	        outputs = model(inputs)
-	        loss = BCE_loss_criterion(outputs[0], labels) #TODO: check this outputs[0]
+	        # loss = BCE_loss_criterion(outputs[0], labels) #TODO: check this outputs[0]
+	        loss = CE_loss_criterion(outputs[-1], labels_raw)
 	        loss.backward()
 	        optimizer.step()
 
@@ -241,9 +243,9 @@ def evaluate(args, device, model):
 	for i, batch in enumerate(epoch_iterator, 0):
 		# Get the batch; each batch is a list of [image, label]
 		batch = tuple(t.to(device, non_blocking=True) for t in batch)
-		image, label = batch
+		image, label, _ = batch
 		with torch.no_grad():
-			output, embedding = model(image)
+			output, embedding, _ = model(image)
 			pred = output.detach().cpu().numpy()
 			embedding = embedding.detach().cpu().numpy()
 			label = label.detach().cpu().numpy()
