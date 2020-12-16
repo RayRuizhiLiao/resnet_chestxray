@@ -61,7 +61,7 @@ def split_tr_eval(split_list_path, training_folds, evaluation_folds):
 					eval_labels[row[2]] = [float(row[3])]
 					eval_ids[row[2]] = row[1]              
 
-	class_reweights = [float(sum(count_labels)/i) for i in count_labels]
+	class_reweights = np.array([float(sum(count_labels)/i) for i in count_labels])
 
 	print("Training and evaluation folds: ", training_folds, evaluation_folds)
 	print("Total number of training labels: ", len(train_labels))
@@ -98,6 +98,7 @@ def train(args, device, model):
 	Create an instance of loss
 	'''
 	#BCE_loss_criterion = BCELoss().to(device)
+	class_reweights = torch.tensor(class_reweights, dtype=torch.float32)
 	CE_loss_criterion = CrossEntropyLoss(weight=class_reweights).to(device)
 
 	'''
