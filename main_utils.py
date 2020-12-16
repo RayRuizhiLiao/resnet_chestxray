@@ -61,12 +61,15 @@ def split_tr_eval(split_list_path, training_folds, evaluation_folds):
 					eval_labels[row[2]] = [float(row[3])]
 					eval_ids[row[2]] = row[1]              
 
+	class_reweights = [float(sum(count_labels)/i) for i in count_labels]
+
 	print("Training and evaluation folds: ", training_folds, evaluation_folds)
 	print("Total number of training labels: ", len(train_labels))
 	print("Total number of training DICOM IDs: ", len(train_ids))
 	print("Total number of evaluation labels: ", len(eval_labels))
 	print("Total number of evaluation DICOM IDs: ", len(eval_ids))
 	print("Label distribution in the training data: {}".format(count_labels))
+	print("Class reweights: {}".format(class_reweights))
 
 	return train_labels, train_ids, eval_labels, eval_ids
 
