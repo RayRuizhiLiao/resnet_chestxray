@@ -11,8 +11,6 @@ parser.add_argument('--num_train_epochs', default=300, type=int,
         			help='Number of epochs to train for')
 parser.add_argument('--scheduler', default='ReduceLROnPlateau', type=str, 
                     help='The scheduler for learning rate during training')
-parser.add_argument('--warmup_proportion', default=0.1, type=float, 
-                    help='warmup proportion for WarmupLinearScheduler')
 parser.add_argument('--model_architecture', default='resnet7_2_1', type=str,
                     help='Neural network architecture to be used')
 

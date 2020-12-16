@@ -19,7 +19,6 @@ from scipy.special import softmax
 
 import torch
 import torchvision
-from pytorch_transformers.optimization import WarmupLinearSchedule
 import torch.optim as optim
 import torch.optim.lr_scheduler as lr_scheduler
 from torch.nn import BCEWithLogitsLoss, BCELoss, CrossEntropyLoss
@@ -44,6 +43,7 @@ def split_tr_eval(split_list_path, training_folds, evaluation_folds):
 	train_ids = {}
 	eval_labels = {}
 	eval_ids = {}
+	count_labels = [0,0,0,0]
 
 	with open(split_list_path, 'r') as train_label_file:
 		train_label_file_reader = csv.reader(train_label_file)
@@ -53,6 +53,7 @@ def split_tr_eval(split_list_path, training_folds, evaluation_folds):
 				if int(row[-1]) in training_folds:
 					train_labels[row[2]] = [float(row[3])]
 					train_ids[row[2]] = row[1]
+					count_labels[int(row[3])] += 1
 				if int(row[-1]) in evaluation_folds:
 					eval_labels[row[2]] = [float(row[3])]
 					eval_ids[row[2]] = row[1]
@@ -65,6 +66,7 @@ def split_tr_eval(split_list_path, training_folds, evaluation_folds):
 	print("Total number of training DICOM IDs: ", len(train_ids))
 	print("Total number of evaluation labels: ", len(eval_labels))
 	print("Total number of evaluation DICOM IDs: ", len(eval_ids))
+	print("Label distribution in the training data: {}".format(count_labels))
 
 	return train_labels, train_ids, eval_labels, eval_ids
 
@@ -101,11 +103,6 @@ def train(args, device, model):
 	'''
 	optimizer = optim.Adam(model.parameters(), 
 							lr=args.init_lr)
-	if args.scheduler == 'WarmupLinearSchedule': # TODO: remove WarmupLinearSchedule
-		num_train_optimization_steps = len(data_loader) * args.num_train_epochs
-		args.warmup_steps = args.warmup_proportion * num_train_optimization_steps
-		scheduler = WarmupLinearSchedule(optimizer, warmup_steps=args.warmup_steps,
-										 t_total=num_train_optimization_steps)
 	if args.scheduler == 'ReduceLROnPlateau':
 		scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, threshold=1e-6)
 
@@ -121,9 +118,6 @@ def train(args, device, model):
 	logger.info("  Batch size: %d", args.batch_size)
 	logger.info("  Initial learning rate: %f", args.init_lr)
 	logger.info("  Learning rate scheduler: %s", args.scheduler)
-	if args.scheduler == 'WarmupLinearSchedule':
-		logger.info("  Total number of training steps: %d", num_train_optimization_steps)
-		logger.info("  Number of steps for warming up learning rate: %d", args.warmup_steps)
 
 	'''
 	Create an instance of a tensorboard writer
@@ -156,14 +150,10 @@ def train(args, device, model):
 
 	        # Forward + backward + optimize
 	        outputs = model(inputs)
-	        loss = BCE_loss_criterion(outputs[0], labels) #TODO: check this outputs[0]
+	        loss = BCE_loss_criterion(outputs[0], labels)
 	        #loss = CE_loss_criterion(outputs[-1], labels_raw)
 	        loss.backward()
 	        optimizer.step()
-
-			# Update learning rate scheduler
-	        if args.scheduler == 'WarmupLinearSchedule':
-	        	scheduler.step()
 
 	        # Print and record statistics
 	        running_loss += loss.item()
@@ -197,9 +187,6 @@ def evaluate(args, device, model):
 	Create a logger for logging model evaluation results
 	'''
 	logger = logging.getLogger(__name__)
-
-	# TODO: remove output_channel_encoding
-	output_channel_encoding = 'multiclass'
 
 	'''
 	Create an instance of evaluation data loader
@@ -249,14 +236,6 @@ def evaluate(args, device, model):
 			pred = output.detach().cpu().numpy()
 			embedding = embedding.detach().cpu().numpy()
 			label = label.detach().cpu().numpy()
-			# TODO: remove this piece
-			# print(output)
-			# pred = logistic.cdf(pred)
-			# print(pred)
-			# preds_logits=logistic.cdf(pred)
-			# print(preds_logits)
-			# print(softmax(preds_logits, axis=1))
-			# print(pred)
 			for j in range(len(pred)):
 				preds.append(pred[j])
 				labels.append(label[j])
