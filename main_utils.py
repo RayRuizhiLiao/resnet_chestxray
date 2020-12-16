@@ -71,7 +71,7 @@ def split_tr_eval(split_list_path, training_folds, evaluation_folds):
 	print("Label distribution in the training data: {}".format(count_labels))
 	print("Class reweights: {}".format(class_reweights))
 
-	return train_labels, train_ids, eval_labels, eval_ids
+	return train_labels, train_ids, eval_labels, eval_ids, class_reweights
 
 # Model training function
 def train(args, device, model):
@@ -81,25 +81,24 @@ def train(args, device, model):
 	'''
 	logger = logging.getLogger(__name__)
 
-	''' 
-	Create an instance of loss
-	'''
-	BCE_loss_criterion = BCELoss().to(device)
-	# CE_loss_criterion = CrossEntropyLoss().to(device)
-
 	'''
 	Create an instance of traning data loader
 	'''
 	xray_transform = RandomTranslateCrop(2048)
-	train_labels, train_dicom_ids, _, _ = split_tr_eval(args.data_split_path,
-													    args.training_folds,
-													    args.evaluation_folds)
+	train_labels, train_dicom_ids, _, _, class_reweights = split_tr_eval(
+		args.data_split_path, args.training_folds, args.evaluation_folds)
 	cxr_dataset = CXRImageDataset(train_dicom_ids, train_labels, args.image_dir,
 	                              transform=xray_transform, image_format=args.image_format)
 	data_loader = DataLoader(cxr_dataset, batch_size=args.batch_size,
 	                         shuffle=True, num_workers=8,
 	                         pin_memory=True)
 	print('Total number of training images: ', len(cxr_dataset))
+
+	''' 
+	Create an instance of loss
+	'''
+	#BCE_loss_criterion = BCELoss().to(device)
+	CE_loss_criterion = CrossEntropyLoss(weight=class_reweights).to(device)
 
 	'''
 	Create an instance of optimizer and learning rate scheduler
@@ -153,8 +152,8 @@ def train(args, device, model):
 
 	        # Forward + backward + optimize
 	        outputs = model(inputs)
-	        loss = BCE_loss_criterion(outputs[0], labels)
-	        #loss = CE_loss_criterion(outputs[-1], labels_raw)
+	        # loss = BCE_loss_criterion(outputs[0], labels)
+	        loss = CE_loss_criterion(outputs[-1], labels_raw)
 	        loss.backward()
 	        optimizer.step()
 
@@ -195,9 +194,9 @@ def evaluate(args, device, model):
 	Create an instance of evaluation data loader
 	'''
 	xray_transform = CenterCrop(2048)
-	_, _, eval_labels, eval_dicom_ids = split_tr_eval(args.data_split_path,
-													  args.training_folds,
-													  args.evaluation_folds)
+	_, _, eval_labels, eval_dicom_ids, _ = split_tr_eval(args.data_split_path,
+														 args.training_folds,
+														 args.evaluation_folds)
 	cxr_dataset = CXRImageDataset(eval_dicom_ids, eval_labels, args.image_dir,
 								  transform=xray_transform, 
 								  image_format=args.image_format)
