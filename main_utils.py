@@ -21,7 +21,7 @@ import torch
 import torchvision
 import torch.optim as optim
 import torch.optim.lr_scheduler as lr_scheduler
-from torch.nn import BCEWithLogitsLoss, BCELoss, CrossEntropyLoss
+from torch.nn import CrossEntropyLoss
 from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import DataLoader
 
@@ -97,9 +97,11 @@ def train(args, device, model):
 	''' 
 	Create an instance of loss
 	'''
-	#BCE_loss_criterion = BCELoss().to(device)
-	class_reweights = torch.tensor(class_reweights, dtype=torch.float32)
-	CE_loss_criterion = CrossEntropyLoss(weight=class_reweights).to(device)
+	if args.loss == 'CE':
+		loss_criterion = CrossEntropyLoss().to(device)
+	if args.loss == 'reweighted_CE':
+		class_reweights = torch.tensor(class_reweights, dtype=torch.float32)
+		loss_criterion = CrossEntropyLoss(weight=class_reweights).to(device)
 
 	'''
 	Create an instance of optimizer and learning rate scheduler
@@ -121,6 +123,7 @@ def train(args, device, model):
 	logger.info("  Batch size: %d", args.batch_size)
 	logger.info("  Initial learning rate: %f", args.init_lr)
 	logger.info("  Learning rate scheduler: %s", args.scheduler)
+	logger.info("  Loss function: %s", args.loss)
 
 	'''
 	Create an instance of a tensorboard writer
@@ -153,8 +156,7 @@ def train(args, device, model):
 
 	        # Forward + backward + optimize
 	        outputs = model(inputs)
-	        # loss = BCE_loss_criterion(outputs[0], labels)
-	        loss = CE_loss_criterion(outputs[-1], labels_raw)
+	        loss = loss_criterion(outputs[-1], labels_raw)
 	        loss.backward()
 	        optimizer.step()
 

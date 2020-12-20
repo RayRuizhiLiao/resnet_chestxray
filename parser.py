@@ -13,6 +13,8 @@ parser.add_argument('--scheduler', default='ReduceLROnPlateau', type=str,
                     help='The scheduler for learning rate during training')
 parser.add_argument('--model_architecture', default='resnet7_2_1', type=str,
                     help='Neural network architecture to be used')
+parser.add_argument('--loss', default='CE', type=str,
+                    help='Which loss function to use: CE, reweighted_CE')
 
 parser.add_argument('--image_dir',
         			default='/data/vision/polina/scratch/ruizhi/chestxray/data/png_16bit',

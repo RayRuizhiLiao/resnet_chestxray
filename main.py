@@ -92,6 +92,7 @@ def main():
 	print('Output directory:', args.output_dir)
 	print('Logging in:\t {}'.format(log_path))
 	print('Input image formet:', args.image_format)
+	print('Loss function: {}'.format(args.loss))
 
 	if args.do_train:
 
