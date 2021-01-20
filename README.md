@@ -4,4 +4,14 @@ Residual neural networks for pulmonary edema assessment in chest radiographs
 
 ## Docker image
 
-The Docker image of this repo is stored at: https://hub.docker.com/repository/docker/rayruizhiliao/mlmodel_cxr_edema
+The Docker image of this repo is stored at: https://hub.docker.com/repository/docker/rayruizhiliao/mlmodel_cxr_edema.
+
+To build the Docker image, run 
+```
+sudo docker build -t mlmodel_cxr_edema .
+```
+
+To run the Docker image, run
+```
+sudo docker run -it rayruizhiliao/mlmodel_cxr_edema:latest
+```
