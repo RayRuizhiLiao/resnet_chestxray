@@ -19,6 +19,8 @@ parser.add_argument('--loss', default='CE', type=str,
 parser.add_argument('--image_dir',
         			default='/data/vision/polina/scratch/ruizhi/chestxray/data/png_16bit',
         			help='Root directory of the CXR image data')
+parser.add_argument('--image_path',
+                    default='/var/local/52658141.png')
 parser.add_argument('--output_dir',
         			default='/data/vision/polina/projects/chestxray/work_space_v2/'\
         			'joint_model_training/image_model/pretrain6/',
@@ -44,6 +46,8 @@ parser.add_argument('--do_train', default=False, action='store_true',
         			help='Whether to perform training')
 parser.add_argument('--do_eval', default=False, action='store_true', 
         			help='Whether to perform evaluation')
+parser.add_argument('--do_inference', default=False, action='store_true', 
+                    help='Whether to perform inference given an image')
 parser.add_argument('--data_split_mode', default='cross_val', 
                     help='Whether to run in cross_val or testing mode')
 parser.add_argument('--logging_steps', default=50, type=int, 

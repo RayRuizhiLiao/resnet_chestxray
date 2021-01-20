@@ -29,16 +29,17 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from model import resnet7_2_1
+from resnet_chestxray.model import resnet7_2_1
+from resnet_chestxray.model_utils import load_image
 import parser
-import main_utils
+import resnet_chestxray.main_utils as main_utils
 
 
 def main():
 	args = parser.get_args()
 
 	device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-	assert torch.cuda.is_available(), "No GPU/CUDA is detected!"
+	# assert torch.cuda.is_available(), "No GPU/CUDA is detected!"
 
 	assert args.do_train or args.do_eval, \
 		"Either do_train or do_eval has to be True!"
@@ -93,6 +94,34 @@ def main():
 	print('Logging in:\t {}'.format(log_path))
 	print('Input image formet:', args.image_format)
 	print('Loss function: {}'.format(args.loss))
+
+	if args.do_inference:
+
+		'''
+		Create an instance of a resnet model and load a checkpoint
+		'''
+		output_channels = 4
+		if args.model_architecture == 'resnet7_2_1':
+			resnet_model = resnet7_2_1(pretrained=True, 
+									   pretrained_model_path=args.checkpoint_path,
+									   output_channels=output_channels)
+		resnet_model = resnet_model.to(device)
+
+		'''
+		Load the input image
+		'''
+		image = load_image(args.image_path)
+
+		'''
+		Run model inference on the image
+		'''
+		pred = main_utils.inference(resnet_model, image)
+		pred = pred[0]
+		severity = sum([i*pred[i] for i in range(len(pred))])
+
+		print(f"{args.image_path} has severity of {severity}")
+
+		return
 
 	if args.do_train:
 
