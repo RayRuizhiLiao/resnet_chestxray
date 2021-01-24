@@ -1,6 +1,7 @@
 import os
 import time
 import itertools
+import gin
 
 import numpy as np
 import pandas as pd
@@ -9,34 +10,37 @@ import torchvision
 from torch.utils.data import DataLoader
 import pydicom
 
+from data_utils import MimicCxrMetadata
 
+
+@gin.configurable
 class MimicCxrDataset(torchvision.datasets.VisionDataset):
 
-    # Directory containing raw MIMIC CXR images and reports
-    raw_dir = '/data/vision/polina/projects/chestxray/data_v2/dicom_reports/'
-    # Metadata that consist of subject IDs, study IDs, and DICOM IDs 
-    meta_csv_path = '/data/vision/polina/projects/chestxray/work_space_v2/' \
-                    'report_processing/edema_labels-12-03-2019/' \
-                    'mimic-cxr-sub-img-edema-split-manualtest.csv'
+    def __init__(self, mimiccxr_dir, mimiccxr_metadata,
+                 dataset_metadata, transform=None):
+        super(MimicCxrDataset, self).__init__(root=None, transform=transform)
 
-    def __init__(self, transform=None, target_transform=None):
-        super(MimicCxrDataset, self).__init__(
-            root=None, transform=transform, target_transform=target_transform)
+        self.mimiccxr_dir = mimiccxr_dir
 
-        meta_df = pd.read_csv(self.meta_csv_path)
-        meta_df = meta_df[['subject_id', 'study_id', 'dicom_id']]
-        self.df = meta_df[:]
-        self.df = self.df.reset_index(drop=True)
+        mimiccxr_metadata_df = MimicCxrMetadata(mimiccxr_metadata).get_sub_columns(
+            ['subject_id', 'study_id', 'dicom_id'])
+        dataset_metadata_df = MimicCxrMetadata(dataset_metadata).get_sub_columns(
+            ['dicom_id'])
+        metadata_df = MimicCxrMetadata.overlap_by_column(mimiccxr_metadata_df,
+                                                           dataset_metadata_df,
+                                                           'dicom_id')
+        self.metadata_df = metadata_df.reset_index(drop=True)
+        
         self.transform = transform
 
     def __len__(self):
-        return len(self.df)
+        return len(self.metadata_df)
 
     def __getitem__(self, i):
         subject_id, study_id, dicom_id = \
-            self.df.loc[i, ['subject_id', 'study_id', 'dicom_id']]
+            self.metadata_df.loc[i, ['subject_id', 'study_id', 'dicom_id']]
         dcm_path = os.path.join(
-            self.raw_dir, f'p{subject_id}', f's{study_id}', f'{dicom_id}.dcm')
+            self.mimiccxr_dir, f'p{subject_id}', f's{study_id}', f'{dicom_id}.dcm')
         if os.path.isfile(dcm_path):
             dcm = pydicom.dcmread(dcm_path)
             img = dcm.pixel_array
