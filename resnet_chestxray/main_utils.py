@@ -296,6 +296,25 @@ def inference(model, image):
 	image = torch.tensor(image, dtype=torch.float32)
 
 	with torch.no_grad():
-		output, _, _ = model(image)
+		probs, _, _ = model(image)
 
-	return output
+	return probs
+
+# Model inference with gradcam given an image
+def inference_gradcam(model_gradcam, image, target_layer):
+
+	xray_transform = CenterCrop(2048)
+
+	image = xray_transform(image)
+	input_img = image.reshape(1, 1, image.shape[0], image.shape[1])
+	input_img = torch.tensor(input_img, dtype=torch.float32)
+
+	probs = model_gradcam.forward(input_img)
+
+	_, ids = probs.sort(dim=1, descending=True)
+	predicted_classes = ids[:, [0]]
+	model_gradcam.backward(ids=predicted_classes)
+	regions = model_gradcam.generate(target_layer=target_layer)
+	gcam_img = regions[0]
+
+	return probs, gcam_img, input_img[0]
