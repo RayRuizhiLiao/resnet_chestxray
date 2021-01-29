@@ -1,9 +1,8 @@
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 
 MAINTAINER Ray Liao <ruizhi@mit.edu>
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        ants \
         ca-certificates \
         curl \
         g++ \
