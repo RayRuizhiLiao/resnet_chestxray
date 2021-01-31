@@ -2,6 +2,3 @@ MimicCxrDataset.mimiccxr_dir = '/data/vision/polina/projects/'\
 							   'chestxray/data_v2/dicom_reports/'
 MimicCxrDataset.mimiccxr_metadata = '../mimic_cxr_edema/auxiliary_metadata/'\
 									'mimic_cxr_metadata_available_CHF_view.csv'
-MimicCxrDataset.dataset_metadata = '/data/vision/polina/projects/chestxray/'\
-								   'work_space_v2/report_processing/edema_labels-12-03-2019/'\
-								   'mimic-cxr-sub-img-edema-split-manualtest.csv'
