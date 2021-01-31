@@ -11,6 +11,10 @@ import numpy as np
 from math import floor, ceil
 import scipy.ndimage as ndimage
 from skimage import io
+import pandas as pd
+import gin
+
+from utils import MimicID
 
 import torch
 import torchvision
@@ -57,49 +61,92 @@ def load_image(img_path):
         image = image/np.max(image)
     return image
 
+class CXRImageDataset(torchvision.datasets.VisionDataset):
+    """A CXR iamge dataset class that loads png images 
+    given a metadata file and return images and labels 
 
-#Dataset class for chest xray images
-class CXRImageDataset(Dataset):
+    Args:
+        data_dir (string): Root directory for the CXR images.
+        dataset_metadata (string): File path of the metadata 
+            that will be used to contstruct this dataset. 
+            This metadata file should contain data IDs that are used to
+            load images and labels associated with data IDs.
+        data_key (string): The name of the column that has image IDs.
+        label_key (string): The name of the column that has labels.
+        transform (callable, optional): A function/tranform that takes in an image 
+            and returns a transfprmed version.
+    """
     
-    def __init__(self, img_ids, labels, root_dir, 
-    			 transform=None, image_format='png'):
-        """
-        Args:
-            csv_file (string): Path to the csv file with annotations.
-            root_dir (string): Directory with all the images.
-            transform (callable, optional): Optional transform to be applied
-            on a sample.
-        """
-        self.img_ids = img_ids
-        self.labels = labels
-        self.root_dir = root_dir
+    def __init__(self, data_dir, dataset_metadata, 
+                 data_key='mimic_id', label_key='label',
+    			 transform=None):
+        self.data_dir = data_dir
+        self.dataset_metadata = pd.read_csv(dataset_metadata)
+        self.data_key = data_key
+        self.label_key = label_key
         self.transform = transform
-        self.image_format = image_format
+        self.image_ids = self.dataset_metadata[data_key]
 
     def __len__(self):
-        return len(self.img_ids)
+        return len(self.image_ids)
 
     def __getitem__(self, idx):
-        if torch.is_tensor(idx):
-            idx = idx.tolist()
+        images_ids, labels = self.dataset_metadata.loc[idx, [self.data_key, self.label_key]]
+        dcm_path = os.path.join(
+            self.mimiccxr_dir, f'p{subject_id}', f's{study_id}', f'{dicom_id}.dcm')
 
-        img_id = list(self.img_ids.keys())[idx]
-        img_path = os.path.join(self.root_dir,
-                                img_id+'.'+self.image_format)
-        image = load_image(img_path)
-        if self.transform:
-            image = self.transform(image)
-        image = image.reshape(1, image.shape[0], image.shape[1])
+        # if torch.is_tensor(idx):
+        #     idx = idx.tolist()
+
+        # img_id = list(self.img_ids.keys())[idx]
+        # img_path = os.path.join(self.root_dir,
+        #                         img_id+'.'+self.image_format)
+        # image = load_image(img_path)
+        # if self.transform:
+        #     image = self.transform(image)
+        # image = image.reshape(1, image.shape[0], image.shape[1])
         
-        label = self.labels[img_id]
-        label_raw = label[0]
-        label = convert_to_onehot(label[0])
-        label = torch.tensor(label, dtype=torch.float32)
-        label_raw = torch.tensor(label_raw, dtype=torch.long)
+        # label = self.labels[img_id]
+        # label_raw = label[0]
+        # label = convert_to_onehot(label[0])
+        # label = torch.tensor(label, dtype=torch.float32)
+        # label_raw = torch.tensor(label_raw, dtype=torch.long)
 
-        sample = [image, label, label_raw]
+        sample = [images_ids, labels]
 
         return sample
+
+    @staticmethod
+    @gin.configurable
+    def create_dataset_metadata(mimiccxr_metadata, label_metadata, save_path,
+                                data_key='study_id', label_key='edema_severity',
+                                mimiccxr_selection={'view': ['frontal']},
+                                holdout_metadata=None, holdout_key='subject_id'):
+        """Create a dataset metadata file for CXRImageDataset 
+        given a MIMIC-CXR metadata file and a label metadata file.
+        """
+
+        mimiccxr_metadata = pd.read_csv(mimiccxr_metadata)
+        label_metadata = pd.read_csv(label_metadata)
+
+        dataset_metadata = mimiccxr_metadata[mimiccxr_metadata[data_key].isin(label_metadata[data_key])]
+
+        if mimiccxr_selection != None:
+            for key in mimiccxr_selection:
+                dataset_metadata = dataset_metadata[dataset_metadata[key].isin(mimiccxr_selection[key])]
+
+        if holdout_metadata != None:
+            holdout_metadata = pd.read_csv(holdout_metadata)
+            dataset_metadata = dataset_metadata[~dataset_metadata[holdout_key].isin(holdout_metadata[holdout_key])]
+
+        label_metadata = label_metadata[[data_key, label_key]]
+        dataset_metadata = dataset_metadata.merge(label_metadata, left_on=data_key, right_on=data_key)
+
+        dataset_metadata['mimic_id'] = dataset_metadata.apply(lambda row: \
+            MimicID(row['subject_id'], row['study_id'], row['dicom_id']).__str__(), axis=1)
+        dataset_metadata = dataset_metadata[['mimic_id', label_key]]
+
+        dataset_metadata.to_csv(save_path, index=False)
 
 
 class CenterCrop(object):

@@ -11,7 +11,23 @@ from torch.utils.data import DataLoader
 import pydicom
 import cv2
 
-from data_utils import MimicID, MimicCxrMetadata
+from utils import MimicID
+
+
+class MimicCxrMetadata:
+
+    def __init__(self, mimiccxr_metadata):
+        self.mimiccxr_metadata = pd.read_csv(mimiccxr_metadata)
+
+    def get_sub_columns(self, columns: list):
+        return self.mimiccxr_metadata[columns]
+
+    def get_sub_rows(self, column: str, values: list):
+        return self.mimiccxr_metadata[self.mimiccxr_metadata[column].isin(values)]
+
+    @staticmethod
+    def overlap_by_column(metadata1, metadata2, column: str):
+        return metadata1[metadata1[column].isin(metadata2[column])]     
 
 
 @gin.configurable
@@ -24,6 +40,8 @@ class MimicCxrDataset(torchvision.datasets.VisionDataset):
         mimiccxr_metadata (string): File path of the entire MIMIC-CXR metadata.
         dataset_metadata (string): File path of the metadata 
             that will be used to contstruct this dataset.
+        overlap_key (string): The name of the column that will be used to find overlap 
+            between mimiccxr_metadata and dataset_metadata. 
         transform (callable, optional): A function/tranform that takes in an image 
             and returns a transfprmed version.
     """
@@ -52,9 +70,9 @@ class MimicCxrDataset(torchvision.datasets.VisionDataset):
         self.dataset_metadata = MimicCxrMetadata.overlap_by_column(
             self.dataset_metadata, metadata_selected, 'dicom_id').reset_index(drop=True)
 
-    def __getitem__(self, i):
+    def __getitem__(self, idx):
         subject_id, study_id, dicom_id = \
-            self.dataset_metadata.loc[i, ['subject_id', 'study_id', 'dicom_id']]
+            self.dataset_metadata.loc[idx, ['subject_id', 'study_id', 'dicom_id']]
         dcm_path = os.path.join(
             self.mimiccxr_dir, f'p{subject_id}', f's{study_id}', f'{dicom_id}.dcm')
         
@@ -81,7 +99,7 @@ def save_png_images(img_size, save_folder, dataset_metadata, overlap_key='dicom_
         torchvision.transforms.Lambda(
             lambda img: np.array(img).astype(np.int32))
     ])
-    mimiccxr_dataset = MimicCxrDataset(dataset_metadata=metadata,
+    mimiccxr_dataset = MimicCxrDataset(dataset_metadata=dataset_metadata,
                                        overlap_key=overlap_key,
                                        transform=transform)
     print(mimiccxr_dataset.__len__())
@@ -91,6 +109,8 @@ def save_png_images(img_size, save_folder, dataset_metadata, overlap_key='dicom_
     mimiccxr_loader = DataLoader(mimiccxr_dataset, batch_size=1, shuffle=False,
                                  num_workers=1, pin_memory=True)
 
+    if not os.path.exists(save_folder):
+        os.makedirs(save_folder) 
     for i, (img, dcm_exists, subject_id, study_id, dicom_id) in enumerate(mimiccxr_loader):
         if dcm_exists:
             img = img.cpu().numpy().astype(np.float)
@@ -144,9 +164,9 @@ def create_cached_images(img_size, save_folder):
     return imgs, df
 
 
-metadata = '/data/vision/polina/projects/chestxray/'\
-           'work_space_v2/report_processing/edema_labels-12-03-2019/'\
-           'mimic-cxr-sub-img-edema-split-manualtest.csv'
+# metadata = '/data/vision/polina/projects/chestxray/'\
+#            'work_space_v2/report_processing/edema_labels-12-03-2019/'\
+#            'mimic-cxr-sub-img-edema-split-manualtest.csv'
 
 # for im_size in [256]:
 #     start = time.time()
