@@ -25,9 +25,58 @@ from torch.nn import CrossEntropyLoss
 from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import DataLoader
 
-from resnet_chestxray.model_utils import CXRImageDataset
-from resnet_chestxray.model_utils import CenterCrop, RandomTranslateCrop
+from .model import build_resnet6_2_1
+from .model_utils import CXRImageDataset
 import eval_metrics
+
+
+def build_training_dataset(data_dir, img_size: int, dataset_metadata='../data/training.csv',
+						   random_degrees=[-20,20], random_translate=[0.1,0.1]):
+	transform=torchvision.transforms.Compose([
+	    torchvision.transforms.Lambda(lambda img: img.astype(np.int32)),
+	    torchvision.transforms.ToPILImage(),
+	    torchvision.transforms.RandomAffine(degrees=random_degrees, translate=random_translate),
+	    torchvision.transforms.CenterCrop(img_size),
+	    torchvision.transforms.Lambda(
+	                lambda img: np.array(img).astype(np.float))
+	])
+	training_dataset = CXRImageDataset(data_dir=data_dir, 
+									   dataset_metadata=dataset_metadata, 
+									   transform=transform)
+
+	return training_dataset
+
+def build_model(model_name):
+	if model_name == 'resnet6_2_1':
+		model = build_resnet6_2_1()
+
+	return model
+
+
+class ModelManager:
+
+	def __init__(self, model):
+		self.model = model
+		self.logger = logging.getLogger(__name__)
+
+	def train(self, data_dir, img_size, dataset_metadata, 
+			  batch_size=8, num_train_epochs=300):
+		dataset = build_training_dataset(data_dir=data_dir,
+										 img_size=img_size,
+										 dataset_metadata=dataset_metadata)
+		data_loader = DataLoader(dataset, batch_size=batch_size,
+								 shuffle=True, num_workers=8,
+								 pin_memory=True)
+		print(f'Total number of training images: {len(dataset)}')
+
+		train_iterator = trange(int(num_train_epochs), desc="Epoch")
+		for epoch in train_iterator:
+			epoch_iterator = tqdm(data_loader, desc="Iteration")
+			for i, batch in enumerate(epoch_iterator, 0):
+				return batch
+				break
+
+		return training_dataset
 
 
 # TODO: optimize this method and maybe the csv format

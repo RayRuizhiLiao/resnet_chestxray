@@ -13,8 +13,9 @@ import scipy.ndimage as ndimage
 from skimage import io
 import pandas as pd
 import gin
+import cv2
 
-from utils import MimicID
+from .utils import MimicID
 
 import torch
 import torchvision
@@ -78,8 +79,9 @@ class CXRImageDataset(torchvision.datasets.VisionDataset):
     """
     
     def __init__(self, data_dir, dataset_metadata, 
-                 data_key='mimic_id', label_key='label',
+                 data_key='mimic_id', label_key='edema_severity',
     			 transform=None):
+        super(CXRImageDataset, self).__init__(root=None, transform=transform)
         self.data_dir = data_dir
         self.dataset_metadata = pd.read_csv(dataset_metadata)
         self.data_key = data_key
@@ -91,30 +93,15 @@ class CXRImageDataset(torchvision.datasets.VisionDataset):
         return len(self.image_ids)
 
     def __getitem__(self, idx):
-        images_ids, labels = self.dataset_metadata.loc[idx, [self.data_key, self.label_key]]
-        dcm_path = os.path.join(
-            self.mimiccxr_dir, f'p{subject_id}', f's{study_id}', f'{dicom_id}.dcm')
+        img_id, label = self.dataset_metadata.loc[idx, [self.data_key, self.label_key]]
+        png_path = os.path.join(self.data_dir, f'{img_id}.png')
 
-        # if torch.is_tensor(idx):
-        #     idx = idx.tolist()
+        img = cv2.imread(png_path, cv2.IMREAD_ANYDEPTH)
 
-        # img_id = list(self.img_ids.keys())[idx]
-        # img_path = os.path.join(self.root_dir,
-        #                         img_id+'.'+self.image_format)
-        # image = load_image(img_path)
-        # if self.transform:
-        #     image = self.transform(image)
-        # image = image.reshape(1, image.shape[0], image.shape[1])
-        
-        # label = self.labels[img_id]
-        # label_raw = label[0]
-        # label = convert_to_onehot(label[0])
-        # label = torch.tensor(label, dtype=torch.float32)
-        # label_raw = torch.tensor(label_raw, dtype=torch.long)
+        if self.transform is not None:
+            img = self.transform(img)
 
-        sample = [images_ids, labels]
-
-        return sample
+        return img, label, img_id
 
     @staticmethod
     @gin.configurable
@@ -149,122 +136,122 @@ class CXRImageDataset(torchvision.datasets.VisionDataset):
         dataset_metadata.to_csv(save_path, index=False)
 
 
-class CenterCrop(object):
-    """Crop randomly the image in a sample.
+# class CenterCrop(object):
+#     """Crop randomly the image in a sample.
 
-    Args:
-        output_size (tuple or int): Desired output size. 
-        If int, square crop is made.
-    """
+#     Args:
+#         output_size (tuple or int): Desired output size. 
+#         If int, square crop is made.
+#     """
 
-    def __init__(self, output_size):
-        assert isinstance(output_size, (int, tuple))
-        if isinstance(output_size, int):
-            self.output_size = (output_size, output_size)
-        else:
-            assert len(output_size) == 2
-            self.output_size = output_size
+#     def __init__(self, output_size):
+#         assert isinstance(output_size, (int, tuple))
+#         if isinstance(output_size, int):
+#             self.output_size = (output_size, output_size)
+#         else:
+#             assert len(output_size) == 2
+#             self.output_size = output_size
 
-    def __call__(self, image):
+#     def __call__(self, image):
 
-        image = self.__pad_2Dimage(image)
-        h, w = image.shape[0:2]
-        new_h, new_w = self.output_size
+#         image = self.__pad_2Dimage(image)
+#         h, w = image.shape[0:2]
+#         new_h, new_w = self.output_size
 
-        if new_h>h or new_w>w:
-            raise ValueError('This image needs to be padded!')
+#         if new_h>h or new_w>w:
+#             raise ValueError('This image needs to be padded!')
 
-        top = floor((h - new_h) / 2)
-        down = top + new_h
-        left = floor((w - new_w) / 2)
-        right = left + new_w
+#         top = floor((h - new_h) / 2)
+#         down = top + new_h
+#         left = floor((w - new_w) / 2)
+#         right = left + new_w
         
-        return image[top:down, left:right]
+#         return image[top:down, left:right]
     
-    def __pad_2Dimage(self, image):
-        'Pad 2D images to match output_size'
-        h, w = image.shape[0:2]
-        h_output, w_output = self.output_size[0:2]
+#     def __pad_2Dimage(self, image):
+#         'Pad 2D images to match output_size'
+#         h, w = image.shape[0:2]
+#         h_output, w_output = self.output_size[0:2]
 
-        pad_h_length = max(0, float(h_output - h))
-        pad_h_length_1 = floor(pad_h_length / 2) + 4  # 4 is extra padding
-        pad_h_length_2 = floor(pad_h_length / 2) + 4  # 4 is extra padding
+#         pad_h_length = max(0, float(h_output - h))
+#         pad_h_length_1 = floor(pad_h_length / 2) + 4  # 4 is extra padding
+#         pad_h_length_2 = floor(pad_h_length / 2) + 4  # 4 is extra padding
 
-        pad_w_length = max(0, float(w_output - w))
-        pad_w_length_1 = floor(pad_w_length / 2) + 4  # 4 is extra padding
-        pad_w_length_2 = floor(pad_w_length / 2) + 4  # 4 is extra padding
+#         pad_w_length = max(0, float(w_output - w))
+#         pad_w_length_1 = floor(pad_w_length / 2) + 4  # 4 is extra padding
+#         pad_w_length_2 = floor(pad_w_length / 2) + 4  # 4 is extra padding
 
-        image = np.pad(image, ((pad_h_length_1, pad_h_length_2), (pad_w_length_1, pad_w_length_2)),
-                       'constant', constant_values=((0, 0), (0, 0)))
+#         image = np.pad(image, ((pad_h_length_1, pad_h_length_2), (pad_w_length_1, pad_w_length_2)),
+#                        'constant', constant_values=((0, 0), (0, 0)))
 
-        return image
+#         return image
 
 
-class RandomTranslateCrop(object):
-    """Translate, rotate and crop the image in a sample.
+# class RandomTranslateCrop(object):
+#     """Translate, rotate and crop the image in a sample.
 
-    Args:
-        output_size (tuple or int): Desired output size. 
-        If int, square crop is made.
-    """
+#     Args:
+#         output_size (tuple or int): Desired output size. 
+#         If int, square crop is made.
+#     """
 
-    def __init__(self, output_size, shift_mean=0,
-                 shift_std=200, rotation_mean=0, rotation_std=20):
-        assert isinstance(output_size, (int, tuple))
-        if isinstance(output_size, int):
-            self.output_size = (output_size, output_size)
-        else:
-            assert len(output_size) == 2
-            self.output_size = output_size
-        self.shift_mean = shift_mean
-        self.shift_std = shift_std
-        self.rotation_mean = rotation_mean
-        self.rotation_std = rotation_std
+#     def __init__(self, output_size, shift_mean=0,
+#                  shift_std=200, rotation_mean=0, rotation_std=20):
+#         assert isinstance(output_size, (int, tuple))
+#         if isinstance(output_size, int):
+#             self.output_size = (output_size, output_size)
+#         else:
+#             assert len(output_size) == 2
+#             self.output_size = output_size
+#         self.shift_mean = shift_mean
+#         self.shift_std = shift_std
+#         self.rotation_mean = rotation_mean
+#         self.rotation_std = rotation_std
 
-    def __call__(self, image):
+#     def __call__(self, image):
 
-        image = self.__translate_2Dimage(image)
-        #image = self.__rotate_2Dimage(image)
-        h, w = image.shape[0:2]
-        new_h, new_w = self.output_size
+#         image = self.__translate_2Dimage(image)
+#         #image = self.__rotate_2Dimage(image)
+#         h, w = image.shape[0:2]
+#         new_h, new_w = self.output_size
 
-        if new_h>h or new_w>w:
-            raise ValueError('This image needs to be padded!')
+#         if new_h>h or new_w>w:
+#             raise ValueError('This image needs to be padded!')
 
-        top = floor((h - new_h) / 2)
-        down = top + new_h
-        left = floor((w - new_w) / 2)
-        right = left + new_w
+#         top = floor((h - new_h) / 2)
+#         down = top + new_h
+#         left = floor((w - new_w) / 2)
+#         right = left + new_w
         
-        return image[top:down, left:right]
+#         return image[top:down, left:right]
 
-    def __translate_2Dimage(self, image):
-        'Translate 2D images as data augmentation'
-        h, w = image.shape[0:2]
-        h_output, w_output = self.output_size[0:2]
+#     def __translate_2Dimage(self, image):
+#         'Translate 2D images as data augmentation'
+#         h, w = image.shape[0:2]
+#         h_output, w_output = self.output_size[0:2]
 
-        # Generate random Gaussian numbers for image shift as data augmentation
-        shift_h = int(np.random.normal(self.shift_mean, self.shift_std))
-        shift_w = int(np.random.normal(self.shift_mean, self.shift_std))
-        if abs(shift_h) > 2 * self.shift_std:
-            shift_h = 0
-        if abs(shift_w) > 2 * self.shift_std:
-            shift_w = 0
+#         # Generate random Gaussian numbers for image shift as data augmentation
+#         shift_h = int(np.random.normal(self.shift_mean, self.shift_std))
+#         shift_w = int(np.random.normal(self.shift_mean, self.shift_std))
+#         if abs(shift_h) > 2 * self.shift_std:
+#             shift_h = 0
+#         if abs(shift_w) > 2 * self.shift_std:
+#             shift_w = 0
 
-        # Pad the 2D image
-        pad_h_length = max(0, float(h_output - h))
-        pad_h_length_1 = floor(pad_h_length / 2) + 4  # 4 is extra padding
-        pad_h_length_2 = floor(pad_h_length / 2) + 4  # 4 is extra padding
-        pad_h_length_1 = pad_h_length_1 + max(shift_h , 0)
-        pad_h_length_2 = pad_h_length_2 + max(-shift_h , 0)
+#         # Pad the 2D image
+#         pad_h_length = max(0, float(h_output - h))
+#         pad_h_length_1 = floor(pad_h_length / 2) + 4  # 4 is extra padding
+#         pad_h_length_2 = floor(pad_h_length / 2) + 4  # 4 is extra padding
+#         pad_h_length_1 = pad_h_length_1 + max(shift_h , 0)
+#         pad_h_length_2 = pad_h_length_2 + max(-shift_h , 0)
 
-        pad_w_length = max(0, float(w_output - w))
-        pad_w_length_1 = floor(pad_w_length / 2) + 4  # 4 is extra padding
-        pad_w_length_2 = floor(pad_w_length / 2) + 4  # 4 is extra padding
-        pad_w_length_1 = pad_w_length_1 + max(shift_w , 0)
-        pad_w_length_2 = pad_w_length_2 + max(-shift_w , 0)
+#         pad_w_length = max(0, float(w_output - w))
+#         pad_w_length_1 = floor(pad_w_length / 2) + 4  # 4 is extra padding
+#         pad_w_length_2 = floor(pad_w_length / 2) + 4  # 4 is extra padding
+#         pad_w_length_1 = pad_w_length_1 + max(shift_w , 0)
+#         pad_w_length_2 = pad_w_length_2 + max(-shift_w , 0)
 
-        image = np.pad(image, ((pad_h_length_1, pad_h_length_2), (pad_w_length_1, pad_w_length_2)),
-                       'constant', constant_values=((0, 0), (0, 0)))
+#         image = np.pad(image, ((pad_h_length_1, pad_h_length_2), (pad_w_length_1, pad_w_length_2)),
+#                        'constant', constant_values=((0, 0), (0, 0)))
 
-        return image
+#         return image
