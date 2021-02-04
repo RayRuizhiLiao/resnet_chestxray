@@ -259,7 +259,7 @@ class ResNet6_2_1(nn.Module):
     with 6 "layers", 2x2 average pooling, and 1 fully connected layer.
     """
 
-    def __init__(self, block, blocks_per_layers, output_channels=3, 
+    def __init__(self, block, blocks_per_layers, output_channels=4, 
                  norm_layer=nn.BatchNorm2d, zero_init_residual=False):
         """ Input batch_sizex256x256x1          ->
             Conv1 batch_sizex256x256x8            ->

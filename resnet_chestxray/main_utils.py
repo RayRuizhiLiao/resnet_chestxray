@@ -38,7 +38,7 @@ def build_training_dataset(data_dir, img_size: int, dataset_metadata='../data/tr
 	    torchvision.transforms.RandomAffine(degrees=random_degrees, translate=random_translate),
 	    torchvision.transforms.CenterCrop(img_size),
 	    torchvision.transforms.Lambda(
-	                lambda img: np.array(img).astype(np.float))
+	                lambda img: np.array(img).astype(np.float32))
 	])
 	training_dataset = CXRImageDataset(data_dir=data_dir, 
 									   dataset_metadata=dataset_metadata, 
@@ -60,7 +60,12 @@ class ModelManager:
 		self.logger = logging.getLogger(__name__)
 
 	def train(self, data_dir, img_size, dataset_metadata, 
-			  batch_size=8, num_train_epochs=300):
+			  batch_size=256, num_train_epochs=300, device='cuda',
+			  init_lr=5e-4, logging_steps=50):
+		'''
+		Create an instance of traning data loader
+		'''
+		print('***** Instantiate a data loader *****')
 		dataset = build_training_dataset(data_dir=data_dir,
 										 img_size=img_size,
 										 dataset_metadata=dataset_metadata)
@@ -68,6 +73,92 @@ class ModelManager:
 								 shuffle=True, num_workers=8,
 								 pin_memory=True)
 		print(f'Total number of training images: {len(dataset)}')
+
+		''' 
+		Create an instance of loss
+		'''
+		print('***** Instantiate the training loss *****')
+		loss_criterion = CrossEntropyLoss().to(device)
+
+		'''
+		Create an instance of optimizer and learning rate scheduler
+		'''
+		print('***** Instantiate an optimizer *****')
+		optimizer = optim.Adam(self.model.parameters(), lr=init_lr)
+
+		'''
+		Train the model
+		'''
+		print('***** Train the model *****')
+		self.model.train()
+		train_iterator = trange(int(num_train_epochs), desc="Epoch")
+		for epoch in train_iterator:
+			epoch_loss = 0
+			epoch_iterator = tqdm(data_loader, desc="Iteration")
+			for i, batch in enumerate(epoch_iterator, 0):
+				# Parse the batch 
+				images, labels, image_ids = batch
+				images.to(device, non_blocking=True)
+				labels.to(device, non_blocking=True)
+
+				# Zero out the parameter gradients
+				optimizer.zero_grad()
+
+				# Forward + backward + optimize
+				outputs = self.model(images)
+				# Note that the logits are used here 
+				loss = loss_criterion(outputs[-1], labels)
+				loss.backward()
+				optimizer.step()
+
+				# Print and record training statistics
+				epoch_loss += loss.item()
+			print(f'Epoch {epoch} finished! Epoch loss: {epoch_loss}')
+
+
+	# global_step = 0
+	# running_loss = 0
+	# logger.info("***** Training the model *****")
+	# for epoch in train_iterator:
+	#     logger.info("  Starting a new epoch: %d", epoch + 1)
+	#     epoch_iterator = tqdm(data_loader, desc="Iteration")
+	#     tr_loss = 0
+	#     for i, batch in enumerate(epoch_iterator, 0):
+	#         # Get the batch 
+	#         batch = tuple(t.to(device, non_blocking=True) for t in batch)
+	#         inputs, labels, labels_raw = batch
+
+	#         # Zero the parameter gradients
+	#         optimizer.zero_grad()
+
+	#         # Forward + backward + optimize
+	#         outputs = model(inputs)
+	#         loss = loss_criterion(outputs[-1], labels_raw)
+	#         loss.backward()
+	#         optimizer.step()
+
+	#         # Print and record statistics
+	#         running_loss += loss.item()
+	#         tr_loss += loss.item()
+	#         global_step += 1
+	#         if global_step % args.logging_steps == 0:
+	#             #grid = torchvision.utils.make_grid(inputs)
+	#             #tsbd_writer.add_image('images', grid, global_step)
+	#             tsbd_writer.add_scalar('loss/train', 
+	#                                    running_loss / (args.logging_steps*args.batch_size), 
+	#                                    global_step)
+	#             tsbd_writer.add_scalar('learning_rate', optimizer.param_groups[0]['lr'], global_step)
+	#             logger.info("  [%d, %5d, %5d] learning rate = %f"%\
+	#             	(epoch + 1, i + 1, global_step, optimizer.param_groups[0]['lr']))
+	#             logger.info("  [%d, %5d, %5d] loss = %.5f"%\
+	#             	(epoch + 1, i + 1, global_step, running_loss / (args.logging_steps*args.batch_size)))        
+	#             running_loss = 0
+	#     logger.info("  Finished an epoch: %d", epoch + 1)
+	#     logger.info("  Training loss of epoch %d = %.5f"%\
+	#     	(epoch+1, tr_loss / (len(cxr_dataset)*args.batch_size)))
+	#     model.save_pretrained(args.checkpoints_dir, epoch=epoch + 1)
+	#     if args.scheduler == 'ReduceLROnPlateau':
+	#     	scheduler.step(tr_loss)
 
 		train_iterator = trange(int(num_train_epochs), desc="Epoch")
 		for epoch in train_iterator:

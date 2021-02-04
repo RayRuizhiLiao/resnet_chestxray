@@ -101,6 +101,8 @@ class CXRImageDataset(torchvision.datasets.VisionDataset):
         if self.transform is not None:
             img = self.transform(img)
 
+        img = np.expand_dims(img, axis=0)
+
         return img, label, img_id
 
     @staticmethod
