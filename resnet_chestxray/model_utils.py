@@ -80,7 +80,7 @@ class CXRImageDataset(torchvision.datasets.VisionDataset):
     
     def __init__(self, data_dir, dataset_metadata, 
                  data_key='mimic_id', label_key='edema_severity',
-    			 transform=None):
+    			 transform=None, cache=False):
         super(CXRImageDataset, self).__init__(root=None, transform=transform)
         self.data_dir = data_dir
         self.dataset_metadata = pd.read_csv(dataset_metadata)
@@ -88,15 +88,22 @@ class CXRImageDataset(torchvision.datasets.VisionDataset):
         self.label_key = label_key
         self.transform = transform
         self.image_ids = self.dataset_metadata[data_key]
+        self.cache = cache
+        if self.cache:
+            self.cache_dataset() 
+        else:
+            self.images = None
 
     def __len__(self):
         return len(self.image_ids)
 
     def __getitem__(self, idx):
         img_id, label = self.dataset_metadata.loc[idx, [self.data_key, self.label_key]]
-        png_path = os.path.join(self.data_dir, f'{img_id}.png')
-
-        img = cv2.imread(png_path, cv2.IMREAD_ANYDEPTH)
+        if self.cache:
+            img = self.images[str(idx)]
+        else:
+            png_path = os.path.join(self.data_dir, f'{img_id}.png')
+            img = cv2.imread(png_path, cv2.IMREAD_ANYDEPTH)
 
         if self.transform is not None:
             img = self.transform(img)
@@ -104,6 +111,15 @@ class CXRImageDataset(torchvision.datasets.VisionDataset):
         img = np.expand_dims(img, axis=0)
 
         return img, label, img_id
+
+    def cache_dataset(self):
+        for idx in range(self.__len__()):
+            img_id, label = self.dataset_metadata.loc[idx, [self.data_key, self.label_key]]
+            png_path = os.path.join(self.data_dir, f'{img_id}.png')
+            img = cv2.imread(png_path, cv2.IMREAD_ANYDEPTH)
+            if idx == 0:
+                self.images = {}
+            self.images[str(idx)] = img
 
     @staticmethod
     @gin.configurable

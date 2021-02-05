@@ -59,9 +59,9 @@ class ModelManager:
 		self.model = model
 		self.logger = logging.getLogger(__name__)
 
-	def train(self, data_dir, img_size, dataset_metadata, 
-			  batch_size=256, num_train_epochs=300, device='cuda',
-			  init_lr=5e-4, logging_steps=50):
+	def train(self, data_dir, img_size, dataset_metadata,
+			  save_dir, batch_size=64, num_train_epochs=300, 
+			  device='cuda', init_lr=5e-4, logging_steps=50):
 		'''
 		Create an instance of traning data loader
 		'''
@@ -113,6 +113,7 @@ class ModelManager:
 
 				# Print and record training statistics
 				epoch_loss += loss.item()
+			self.model.save_pretrained(save_dir, epoch=epoch + 1)
 			print(f'Epoch {epoch} finished! Epoch loss: {epoch_loss}')
 
 
@@ -159,13 +160,6 @@ class ModelManager:
 	#     model.save_pretrained(args.checkpoints_dir, epoch=epoch + 1)
 	#     if args.scheduler == 'ReduceLROnPlateau':
 	#     	scheduler.step(tr_loss)
-
-		train_iterator = trange(int(num_train_epochs), desc="Epoch")
-		for epoch in train_iterator:
-			epoch_iterator = tqdm(data_loader, desc="Iteration")
-			for i, batch in enumerate(epoch_iterator, 0):
-				return batch
-				break
 
 		return training_dataset
 
