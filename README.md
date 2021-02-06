@@ -2,6 +2,9 @@
 
 Residual neural networks for pulmonary edema assessment in chest radiographs 
 
+## Generate PNG images from MIMIC-CXR DICOM data
+Run 'python image_prep/dcm_to_png.py' to generate PNG images from MIMIC-CXR DICOM data, given specified metadata information. 
+
 ## Docker image
 
 The Docker image of this repo is stored at: https://hub.docker.com/repository/docker/rayruizhiliao/mlmodel_cxr_edema.
