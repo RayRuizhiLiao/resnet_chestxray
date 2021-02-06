@@ -114,7 +114,9 @@ def frontal_dcm_to_png(img_size, save_folder, dataset_metadata,
                                  num_workers=1, pin_memory=True)
 
     if not os.path.exists(save_folder):
-        os.makedirs(save_folder) 
+        os.makedirs(save_folder)
+    num_notexist = 0
+    num_exist = 0
     for i, (img, dcm_exists, subject_id, study_id, dicom_id) in enumerate(mimiccxr_loader):
         if dcm_exists:
             img = img.cpu().numpy().astype(np.float)
@@ -122,9 +124,13 @@ def frontal_dcm_to_png(img_size, save_folder, dataset_metadata,
             png_path = os.path.join(save_folder, f"{mimic_id.__str__()}.png")
             image = 65535*img[0]/np.amax(img[0])
             cv2.imwrite(png_path, image.astype(np.uint16))
-            if i%1000==0:
-                print(f'{i} images saved!')
-
+            num_exist+=1
+            if num_exist%1000==0:
+                print(f'{num_exist} images saved!')
+        else:
+            num_notexist+=1
+    print(f'{num_exist} frontal view images saved!')
+    print(f'{num_notexist} frontal view images do not exist!')
 
 #metadata = '../mimic_cxr_edema/regex_report_edema_severity.csv'
 metadata = os.path.join(parent_dir,
