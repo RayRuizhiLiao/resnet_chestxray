@@ -1,4 +1,0 @@
-MimicCxrDataset.mimiccxr_dir = '/data/vision/polina/projects/'\
-							   'chestxray/data_v2/dicom_reports/'
-MimicCxrDataset.mimiccxr_metadata = '../mimic_cxr_edema/auxiliary_metadata/'\
-									'mimic_cxr_metadata_available_CHF_view.csv'

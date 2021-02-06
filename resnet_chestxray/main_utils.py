@@ -33,18 +33,36 @@ import eval_metrics
 def build_training_dataset(data_dir, img_size: int, dataset_metadata='../data/training.csv',
 						   random_degrees=[-20,20], random_translate=[0.1,0.1]):
 	transform=torchvision.transforms.Compose([
-	    torchvision.transforms.Lambda(lambda img: img.astype(np.int32)),
-	    torchvision.transforms.ToPILImage(),
-	    torchvision.transforms.RandomAffine(degrees=random_degrees, translate=random_translate),
-	    torchvision.transforms.CenterCrop(img_size),
-	    torchvision.transforms.Lambda(
-	                lambda img: np.array(img).astype(np.float32))
+		torchvision.transforms.Lambda(lambda img: img.astype(np.int16)),
+		torchvision.transforms.ToPILImage(),
+		torchvision.transforms.RandomAffine(degrees=random_degrees, translate=random_translate),
+		torchvision.transforms.CenterCrop(img_size),
+		torchvision.transforms.Lambda(
+			lambda img: np.array(img).astype(np.float32)),
+		torchvision.transforms.Lambda(
+			lambda img: img / img.max())
 	])
 	training_dataset = CXRImageDataset(data_dir=data_dir, 
 									   dataset_metadata=dataset_metadata, 
 									   transform=transform)
 
 	return training_dataset
+
+def build_evaluation_dataset(data_dir, img_size: int, dataset_metadata='../data/test.csv'):
+	transform=torchvision.transforms.Compose([
+		torchvision.transforms.Lambda(lambda img: img.astype(np.int16)),
+		torchvision.transforms.ToPILImage(),
+		torchvision.transforms.CenterCrop(img_size),
+		torchvision.transforms.Lambda(
+			lambda img: np.array(img).astype(np.float32)),
+		torchvision.transforms.Lambda(
+			lambda img: img / img.max())
+	])
+	evaluation_dataset = CXRImageDataset(data_dir=data_dir, 
+									     dataset_metadata=dataset_metadata, 
+									     transform=transform)
+
+	return evaluation_dataset
 
 def build_model(model_name):
 	if model_name == 'resnet6_2_1':
@@ -55,19 +73,20 @@ def build_model(model_name):
 
 class ModelManager:
 
-	def __init__(self, model):
+	def __init__(self, model, img_size):
 		self.model = model
+		self.img_size = img_size
 		self.logger = logging.getLogger(__name__)
 
-	def train(self, data_dir, img_size, dataset_metadata,
-			  save_dir, batch_size=64, num_train_epochs=300, 
+	def train(self, data_dir, dataset_metadata, save_dir,
+			  batch_size=64, num_train_epochs=300, 
 			  device='cuda', init_lr=5e-4, logging_steps=50):
 		'''
 		Create an instance of traning data loader
 		'''
 		print('***** Instantiate a data loader *****')
 		dataset = build_training_dataset(data_dir=data_dir,
-										 img_size=img_size,
+										 img_size=self.img_size,
 										 dataset_metadata=dataset_metadata)
 		data_loader = DataLoader(dataset, batch_size=batch_size,
 								 shuffle=True, num_workers=8,
@@ -116,96 +135,101 @@ class ModelManager:
 			self.model.save_pretrained(save_dir, epoch=epoch + 1)
 			print(f'Epoch {epoch} finished! Epoch loss: {epoch_loss}')
 
+		return
 
-	# global_step = 0
-	# running_loss = 0
-	# logger.info("***** Training the model *****")
-	# for epoch in train_iterator:
-	#     logger.info("  Starting a new epoch: %d", epoch + 1)
-	#     epoch_iterator = tqdm(data_loader, desc="Iteration")
-	#     tr_loss = 0
-	#     for i, batch in enumerate(epoch_iterator, 0):
-	#         # Get the batch 
-	#         batch = tuple(t.to(device, non_blocking=True) for t in batch)
-	#         inputs, labels, labels_raw = batch
+	def eval(self, data_dir, dataset_metadata, checkpoint_path,
+			 checkpoint_name=None, batch_size=64, device='cuda'):
+		'''
+		Create an instance of evaluation data loader
+		'''
+		print('***** Instantiate a data loader *****')
+		dataset = build_evaluation_dataset(data_dir=data_dir,
+										   img_size=self.img_size,
+										   dataset_metadata=dataset_metadata)
+		data_loader = DataLoader(dataset, batch_size=batch_size,
+								 shuffle=True, num_workers=8,
+								 pin_memory=True)
+		print(f'Total number of evaluation images: {len(dataset)}')
 
-	#         # Zero the parameter gradients
-	#         optimizer.zero_grad()
+		'''
+		Evaluate the model
+		'''
+		print('***** Evaluate the model *****')
+		self.model.eval()
 
-	#         # Forward + backward + optimize
-	#         outputs = model(inputs)
-	#         loss = loss_criterion(outputs[-1], labels_raw)
-	#         loss.backward()
-	#         optimizer.step()
+		# For storing labels and model predictions
+		all_preds_prob = []
+		all_preds_logit = []
+		all_labels = []
 
-	#         # Print and record statistics
-	#         running_loss += loss.item()
-	#         tr_loss += loss.item()
-	#         global_step += 1
-	#         if global_step % args.logging_steps == 0:
-	#             #grid = torchvision.utils.make_grid(inputs)
-	#             #tsbd_writer.add_image('images', grid, global_step)
-	#             tsbd_writer.add_scalar('loss/train', 
-	#                                    running_loss / (args.logging_steps*args.batch_size), 
-	#                                    global_step)
-	#             tsbd_writer.add_scalar('learning_rate', optimizer.param_groups[0]['lr'], global_step)
-	#             logger.info("  [%d, %5d, %5d] learning rate = %f"%\
-	#             	(epoch + 1, i + 1, global_step, optimizer.param_groups[0]['lr']))
-	#             logger.info("  [%d, %5d, %5d] loss = %.5f"%\
-	#             	(epoch + 1, i + 1, global_step, running_loss / (args.logging_steps*args.batch_size)))        
-	#             running_loss = 0
-	#     logger.info("  Finished an epoch: %d", epoch + 1)
-	#     logger.info("  Training loss of epoch %d = %.5f"%\
-	#     	(epoch+1, tr_loss / (len(cxr_dataset)*args.batch_size)))
-	#     model.save_pretrained(args.checkpoints_dir, epoch=epoch + 1)
-	#     if args.scheduler == 'ReduceLROnPlateau':
-	#     	scheduler.step(tr_loss)
+		epoch_iterator = tqdm(data_loader, desc="Iteration")
+		for i, batch in enumerate(epoch_iterator, 0):
+			# Parse the batch 
+			images, labels, image_ids = batch
+			images.to(device, non_blocking=True)
+			labels.to(device, non_blocking=True)
 
-		return training_dataset
+			with torch.no_grad():
+				outputs = self.model(images)
+				
+				preds_prob = outputs[0]
+				preds_logit = outputs[-1]
 
+				preds_prob = preds_prob.detach().cpu().numpy()
+				preds_logit = preds_logit.detach().cpu().numpy()
+				labels = labels.detach().cpu().numpy()
+
+				all_preds_prob += \
+					[preds_prob[j] for j in range(len(labels))]
+				all_preds_logit += \
+					[preds_logit[j] for j in range(len(labels))]
+				all_labels += \
+					[labels[j] for j in range(len(labels))]
+
+		return all_preds_prob, all_preds_logit, all_labels
 
 # TODO: optimize this method and maybe the csv format
-def split_tr_eval(split_list_path, training_folds, evaluation_folds):
-	"""
-	Given a data split list (.csv), training folds and evaluation folds,
-	return DICOM IDs and the associated labels for training and evaluation
-	"""
+# def split_tr_eval(split_list_path, training_folds, evaluation_folds):
+# 	"""
+# 	Given a data split list (.csv), training folds and evaluation folds,
+# 	return DICOM IDs and the associated labels for training and evaluation
+# 	"""
 
-	print('Data split list being used: ', split_list_path)
+# 	print('Data split list being used: ', split_list_path)
 
-	train_labels = {}
-	train_ids = {}
-	eval_labels = {}
-	eval_ids = {}
-	count_labels = [0,0,0,0]
+# 	train_labels = {}
+# 	train_ids = {}
+# 	eval_labels = {}
+# 	eval_ids = {}
+# 	count_labels = [0,0,0,0]
 
-	with open(split_list_path, 'r') as train_label_file:
-		train_label_file_reader = csv.reader(train_label_file)
-		row = next(train_label_file_reader)
-		for row in train_label_file_reader:
-			if row[-1] != 'TEST':
-				if int(row[-1]) in training_folds:
-					train_labels[row[2]] = [float(row[3])]
-					train_ids[row[2]] = row[1]
-					count_labels[int(row[3])] += 1
-				if int(row[-1]) in evaluation_folds:
-					eval_labels[row[2]] = [float(row[3])]
-					eval_ids[row[2]] = row[1]
-			if row[-1] == 'TEST' and -1 in evaluation_folds:
-					eval_labels[row[2]] = [float(row[3])]
-					eval_ids[row[2]] = row[1]              
+# 	with open(split_list_path, 'r') as train_label_file:
+# 		train_label_file_reader = csv.reader(train_label_file)
+# 		row = next(train_label_file_reader)
+# 		for row in train_label_file_reader:
+# 			if row[-1] != 'TEST':
+# 				if int(row[-1]) in training_folds:
+# 					train_labels[row[2]] = [float(row[3])]
+# 					train_ids[row[2]] = row[1]
+# 					count_labels[int(row[3])] += 1
+# 				if int(row[-1]) in evaluation_folds:
+# 					eval_labels[row[2]] = [float(row[3])]
+# 					eval_ids[row[2]] = row[1]
+# 			if row[-1] == 'TEST' and -1 in evaluation_folds:
+# 					eval_labels[row[2]] = [float(row[3])]
+# 					eval_ids[row[2]] = row[1]              
 
-	class_reweights = np.array([float(sum(count_labels)/i) for i in count_labels])
+# 	class_reweights = np.array([float(sum(count_labels)/i) for i in count_labels])
 
-	print("Training and evaluation folds: ", training_folds, evaluation_folds)
-	print("Total number of training labels: ", len(train_labels))
-	print("Total number of training DICOM IDs: ", len(train_ids))
-	print("Total number of evaluation labels: ", len(eval_labels))
-	print("Total number of evaluation DICOM IDs: ", len(eval_ids))
-	print("Label distribution in the training data: {}".format(count_labels))
-	print("Class reweights: {}".format(class_reweights))
+# 	print("Training and evaluation folds: ", training_folds, evaluation_folds)
+# 	print("Total number of training labels: ", len(train_labels))
+# 	print("Total number of training DICOM IDs: ", len(train_ids))
+# 	print("Total number of evaluation labels: ", len(eval_labels))
+# 	print("Total number of evaluation DICOM IDs: ", len(eval_ids))
+# 	print("Label distribution in the training data: {}".format(count_labels))
+# 	print("Class reweights: {}".format(class_reweights))
 
-	return train_labels, train_ids, eval_labels, eval_ids, class_reweights
+# 	return train_labels, train_ids, eval_labels, eval_ids, class_reweights
 
 # Model training function
 def train(args, device, model):

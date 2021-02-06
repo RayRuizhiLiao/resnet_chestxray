@@ -1,17 +1,18 @@
 import os
-import time
-import itertools
-import gin
-
 import numpy as np
 import pandas as pd
-import torch
-import torchvision
-from torch.utils.data import DataLoader
 import pydicom
 import cv2
 
+import torch
+import torchvision
+from torch.utils.data import DataLoader
+
 from utils import MimicID
+
+
+current_dir = os.path.dirname(__file__)
+parent_dir = os.path.dirname(current_dir)
 
 
 class MimicCxrMetadata:
@@ -30,7 +31,6 @@ class MimicCxrMetadata:
         return metadata1[metadata1[column].isin(metadata2[column])]     
 
 
-@gin.configurable
 class MimicCxrDataset(torchvision.datasets.VisionDataset):
     """A MIMIC-CXR dataset class that loads dicom images from MIMIC-CXR 
     given a metadata file and return images in npy
@@ -46,14 +46,16 @@ class MimicCxrDataset(torchvision.datasets.VisionDataset):
             and returns a transfprmed version.
     """
 
-    def __init__(self, mimiccxr_dir, mimiccxr_metadata,
-                 dataset_metadata, overlap_key='dicom_id', transform=None):
+    mimiccxr_dir = '/data/vision/polina/projects/chestxray/data_v2/dicom_reports/'
+    mimiccxr_metadata_path = os.path.join(parent_dir, 
+                                          'mimic_cxr_edema/auxiliary_metadata/'\
+                                          'mimic_cxr_metadata_available_CHF_view.csv')
+
+    def __init__(self, dataset_metadata, overlap_key='dicom_id', transform=None):
         super(MimicCxrDataset, self).__init__(root=None, transform=transform)
 
-        self.mimiccxr_dir = mimiccxr_dir
-
-        self.mimiccxr_metadata = MimicCxrMetadata(mimiccxr_metadata).get_sub_columns(
-            ['subject_id', 'study_id', 'dicom_id'])
+        self.mimiccxr_metadata = MimicCxrMetadata(self.mimiccxr_metadata_path).\
+            get_sub_columns(['subject_id', 'study_id', 'dicom_id'])
        
         dataset_ids = MimicCxrMetadata(dataset_metadata).get_sub_columns(
             [overlap_key])
@@ -90,7 +92,8 @@ class MimicCxrDataset(torchvision.datasets.VisionDataset):
         return img, dcm_exists, str(subject_id), str(study_id), str(dicom_id)
 
 
-def save_png_images(img_size, save_folder, dataset_metadata, overlap_key='dicom_id', view_metadata=None):
+def frontal_dcm_to_png(img_size, save_folder, dataset_metadata, 
+                       overlap_key='dicom_id', view_metadata=None):
     transform=torchvision.transforms.Compose([
         torchvision.transforms.Lambda(lambda img: img.astype(np.int32)),
         # PIL accepts in32, not uint16
@@ -102,10 +105,11 @@ def save_png_images(img_size, save_folder, dataset_metadata, overlap_key='dicom_
     mimiccxr_dataset = MimicCxrDataset(dataset_metadata=dataset_metadata,
                                        overlap_key=overlap_key,
                                        transform=transform)
-    print(mimiccxr_dataset.__len__())
+    print(f'Total number of images: {mimiccxr_dataset.__len__()}')
     if view_metadata != None:
+        # Select frontal view images
         mimiccxr_dataset.select_by_column(view_metadata, 'view', ['frontal'])
-    print(mimiccxr_dataset.__len__())
+    print(f'Total number of frontal view images: {mimiccxr_dataset.__len__()}')
     mimiccxr_loader = DataLoader(mimiccxr_dataset, batch_size=1, shuffle=False,
                                  num_workers=1, pin_memory=True)
 
@@ -119,59 +123,14 @@ def save_png_images(img_size, save_folder, dataset_metadata, overlap_key='dicom_
             image = 65535*img[0]/np.amax(img[0])
             cv2.imwrite(png_path, image.astype(np.uint16))
             if i%1000==0:
-                print(i)
+                print(f'{i} images saved!')
 
 
-def create_cached_images(img_size, save_folder):
-    dataset = MimicCxrDataset(
-        transform=torchvision.transforms.Compose([
-            # unnormalized uint16 -> int32 (PIL accepts in32, not uint16)
-            torchvision.transforms.Lambda(lambda img: img.astype(np.int32)),
-            torchvision.transforms.ToPILImage(),
-            torchvision.transforms.Resize(img_size),
-            torchvision.transforms.CenterCrop(img_size),
-            torchvision.transforms.Lambda(
-                lambda img: np.array(img).astype(np.int32))
-        ]))
-    loader = DataLoader(dataset, batch_size=75, shuffle=False,
-                        num_workers=15, pin_memory=False)
-
-    imgs, dicom_ids_on_disk = [], []
-    for it, (img, dicom_id, dcm_exists) in enumerate(loader):
-        exists_id = torch.nonzero(dcm_exists)
-        dicom_ids_on_disk.append([dicom_id[i] for i in exists_id])
-        imgs.append(img[exists_id].squeeze().numpy().astype(np.uint16))
-
-    dicom_ids_on_disk = list(itertools.chain.from_iterable(dicom_ids_on_disk))
-    imgs = np.concatenate(imgs, axis=0)
-    print(f'Cached a total of {imgs.shape[0]} Images')
-
-    '''
-    Save downsampled images 
-    '''
-
-    os.makedirs(save_folder, exist_ok=True)
-
-    df = pd.DataFrame({'dicom_id': dicom_ids_on_disk,
-                       'index_to_cached_array': list(range(len(dicom_ids_on_disk)))})
-    df_path = os.path.join(save_folder, 
-                          'dicom_id_to_cached_array_index_mapping.csv')
-    df.to_csv(df_path, index=False)
-
-    cache_name = os.path.join(save_folder, f"mimiccxr-{img_size}")
-    np.save(f'{cache_name}.npy', imgs)
-
-    return imgs, df
-
-
-# metadata = '/data/vision/polina/projects/chestxray/'\
-#            'work_space_v2/report_processing/edema_labels-12-03-2019/'\
-#            'mimic-cxr-sub-img-edema-split-manualtest.csv'
-
-# for im_size in [256]:
-#     start = time.time()
-#     create_cached_images(
-#         im_size,
-#         '/data/vision/polina/scratch/wpq/github/interpretability/notebooks/data/MimicCxrChexpertDataset')
-#     end = time.time()
-#     print(f'im_size: {im_size} done!')
+#metadata = '../mimic_cxr_edema/regex_report_edema_severity.csv'
+metadata = os.path.join(parent_dir,
+                        'mimic_cxr_edema/auxiliary_metadata/mimic_cxr_metadata_available_CHF_view.csv')
+view_metadata = os.path.join(parent_dir,
+                             'mimic_cxr_edema/auxiliary_metadata/mimic_cxr_metadata_available_CHF_view.csv')
+save_dir = '/data/vision/polina/scratch/ruizhi/chestxray/data/png_16bit_256_2/'
+frontal_dcm_to_png(img_size=256, save_folder=save_dir, overlap_key='study_id',
+                   dataset_metadata=metadata, view_metadata=view_metadata)
