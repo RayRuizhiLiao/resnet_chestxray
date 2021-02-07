@@ -171,6 +171,8 @@ class ResNet7_2_1(nn.Module):
         """
 
         # Saving path should be a directory where the model and configuration can be saved
+        if not os.path.exists(save_directory):
+            os.makedirs(save_directory)
         assert os.path.isdir(save_directory)
 
         # Only save the model it-self if we are using distributed training
@@ -356,6 +358,8 @@ class ResNet6_2_1(nn.Module):
         """
 
         # Saving path should be a directory where the model and configuration can be saved
+        if not os.path.exists(save_directory):
+            os.makedirs(save_directory)
         assert os.path.isdir(save_directory)
 
         # Only save the model it-self if we are using distributed training

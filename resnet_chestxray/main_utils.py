@@ -26,7 +26,7 @@ from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import DataLoader
 
 from .model import build_resnet6_2_1
-from .model_utils import CXRImageDataset
+from .model_utils import CXRImageDataset, convert_to_onehot
 import eval_metrics
 
 
@@ -64,17 +64,22 @@ def build_evaluation_dataset(data_dir, img_size: int, dataset_metadata='../data/
 
 	return evaluation_dataset
 
-def build_model(model_name):
-	if model_name == 'resnet6_2_1':
-		model = build_resnet6_2_1()
-
+def build_model(model_name, checkpoint_path=None):
+	if checkpoint_path == None:
+		if model_name == 'resnet6_2_1':
+			model = build_resnet6_2_1()
+	else:
+		if model_name == 'resnet6_2_1':
+			model = build_resnet6_2_1(pretrained=True,
+									  pretrained_model_path=checkpoint_path)		
 	return model
 
 
 class ModelManager:
 
-	def __init__(self, model, img_size):
-		self.model = model
+	def __init__(self, model_name, img_size):
+		self.model_name = model_name
+		self.model = build_model(self.model_name)
 		self.img_size = img_size
 		self.logger = logging.getLogger(__name__)
 
@@ -138,7 +143,13 @@ class ModelManager:
 		return
 
 	def eval(self, data_dir, dataset_metadata, checkpoint_path,
-			 checkpoint_name=None, batch_size=64, device='cuda'):
+			 batch_size=64, device='cuda'):
+		'''
+		Load the checkpoint (essentially create a "different" model)
+		'''
+		self.model = build_model(self.model_name,
+								 checkpoint_path=checkpoint_path)
+
 		'''
 		Create an instance of evaluation data loader
 		'''
@@ -186,7 +197,30 @@ class ModelManager:
 				all_labels += \
 					[labels[j] for j in range(len(labels))]
 
-		return all_preds_prob, all_preds_logit, all_labels
+		all_preds_class = np.argmax(all_preds_prob, axis=1)
+		inference_results = {'all_preds_prob': all_preds_prob,
+							 'all_preds_class': all_preds_class,
+							 'all_labels': all_labels}
+		
+		all_onehot_labels = [convert_to_onehot(label) for label in all_labels]
+		eval_results = {}
+
+		ordinal_aucs = eval_metrics.compute_ordinal_auc(all_onehot_labels, all_preds_prob)
+		eval_results['ordinal_aucs'] = ordinal_aucs
+
+	# pairwise_aucs = eval_metrics.compute_pairwise_auc(labels, preds)
+	# eval_results['pairwise_auc'] = pairwise_aucs
+
+	# multiclass_aucs = eval_metrics.compute_multiclass_auc(labels, preds)
+	# eval_results['multiclass_aucs'] = multiclass_aucs
+
+	# eval_results['mse'] = eval_metrics.compute_mse(labels_raw, preds)
+
+	# results_acc_f1, _, _ = eval_metrics.compute_acc_f1_metrics(labels_raw, preds)
+	# eval_results.update(results_acc_f1)
+
+
+		return inference_results, eval_results
 
 # TODO: optimize this method and maybe the csv format
 # def split_tr_eval(split_list_path, training_folds, evaluation_folds):
