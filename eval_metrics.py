@@ -32,7 +32,7 @@ def compute_pairwise_auc(labels, preds):
                 y.append(y_all[j][channel1])
                 pred.append(pred_all[j][channel1]/(pred_all[j][channel0]+pred_all[j][channel1]))
         fpr, tpr, thresholds = sklearn.metrics.roc_curve(y, pred, pos_label=1)
-        return round(sklearn.metrics.auc(fpr, tpr), 4)
+        return sklearn.metrics.auc(fpr, tpr)
 
     pairwise_aucs['0v1'] = _pairwise_auc(labels, preds, 0, 1)
     pairwise_aucs['0v2'] = _pairwise_auc(labels, preds, 0, 2)
@@ -63,7 +63,7 @@ def compute_ordinal_auc(labels, preds):
             y.append(sum(labels[j][i+1:])) # P(severity >=1) = P(severity=1) + P(severity=2) + P(severity=3)
             pred.append(sum(preds[j][i+1:])) # P(severity >=1) = P(severity=1) + P(severity=2) + P(severity=3)
         fpr, tpr, thresholds = sklearn.metrics.roc_curve(y, pred, pos_label=1)
-        ordinal_aucs.append(round(sklearn.metrics.auc(fpr, tpr), 4))
+        ordinal_aucs.append(sklearn.metrics.auc(fpr, tpr))
     
     return ordinal_aucs
 
@@ -83,9 +83,44 @@ def compute_multiclass_auc(labels, preds):
     aucs = []
     for i in range(num_channels):
         fpr, tpr, thresholds = sklearn.metrics.roc_curve(labels[:,i], preds[:,i], pos_label=1)
-        aucs.append(round(sklearn.metrics.auc(fpr, tpr), 4))
+        aucs.append(sklearn.metrics.auc(fpr, tpr))
 
     return aucs
+
+def compute_ordinal_acc_f1_metrics(labels, preds):
+    ''' Compute ordinal AUCs given
+        labels (a batch of 4-class one-hot labels) and
+        preds (a batch of predictions as 4-class probabilities)
+    '''
+
+    assert np.shape(labels) == np.shape(preds) # size(labels)=(N,C);size(preds)=(N,C)
+
+    num_datapoints = np.shape(preds)[0]
+    num_channels = np.shape(preds)[1]
+    cutoff_channels = num_channels-1
+
+    ordinal_precision = [] # 0v123, 01v23, 012v3
+    ordinal_recall = [] # 0v123, 01v23, 012v3
+    ordinal_accuracy = [] # 0v123, 01v23, 012v3
+    for i in range(cutoff_channels):
+        dichotomized_labels = []
+        pred_classes = []
+        for j in range(num_datapoints):
+            y = sum(labels[j][i+1:]) # P(severity >=1) = P(severity=1) + P(severity=2) + P(severity=3)
+            dichotomized_labels.append(y)
+            pred_prob = sum(preds[j][i+1:]) # P(severity >=1) = P(severity=1) + P(severity=2) + P(severity=3)
+            pred_classes.append(np.argmax([1-pred_prob, pred_prob]))
+        precision, recall, f1, _ = precision_recall_fscore_support(dichotomized_labels, 
+                                                                   pred_classes)
+        accuracy = accuracy_score(dichotomized_labels, pred_classes)
+        ordinal_precision.append(precision[1])
+        ordinal_recall.append(recall[1])
+        ordinal_accuracy.append(accuracy)
+    
+    return {
+        "ordinal_precision": ordinal_precision,
+        "ordinal_recall": ordinal_recall,
+        "ordinal_accuracy": ordinal_accuracy}
 
 def compute_acc_f1_metrics(labels, preds):
     ''' Compute accuracy, F1, and other metrics given
@@ -101,15 +136,12 @@ def compute_acc_f1_metrics(labels, preds):
     accuracy = accuracy_score(labels, pred_classes)
     macro_f1 = np.mean(f1)
 
-    def round_nd_array(array):
-        return [round(val, 4) for val in array]
-
     return {
-        "accuracy": round(accuracy, 4),
-        "f1": round_nd_array(f1),
-        "precision": round_nd_array(precision),
-        "recall": round_nd_array(recall),
-        'macro_f1': round(macro_f1, 4) 
+        "accuracy": accuracy,
+        "f1": f1,
+        "precision": precision,
+        "recall": recall,
+        'macro_f1': macro_f1 
     }, labels, pred_classes 
 
 def compute_mse(labels, preds):
@@ -128,4 +160,4 @@ def compute_mse(labels, preds):
         for j in range(num_channels):
             expect_preds[i] += j * preds[i][j]
 
-    return round(mse(labels, expect_preds), 4)
+    return mse(labels, expect_preds)

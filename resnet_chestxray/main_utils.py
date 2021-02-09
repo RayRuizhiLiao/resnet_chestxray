@@ -16,6 +16,7 @@ from sklearn.metrics import accuracy_score
 from sklearn.metrics import mean_squared_error as mse
 import csv
 from scipy.special import softmax
+import time
 
 import torch
 import torchvision
@@ -25,7 +26,8 @@ from torch.nn import CrossEntropyLoss
 from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import DataLoader
 
-from .model import build_resnet6_2_1
+from .model import build_resnet256_6_2_1, build_resnet512_6_2_1
+from .model import build_resnet1024_7_2_1, build_resnet2048_7_2_1
 from .model_utils import CXRImageDataset, convert_to_onehot
 import eval_metrics
 
@@ -66,12 +68,27 @@ def build_evaluation_dataset(data_dir, img_size: int, dataset_metadata='../data/
 
 def build_model(model_name, checkpoint_path=None):
 	if checkpoint_path == None:
-		if model_name == 'resnet6_2_1':
-			model = build_resnet6_2_1()
+		if model_name == 'resnet256_6_2_1':
+			model = build_resnet256_6_2_1()
+		if model_name == 'resnet512_6_2_1':
+			model = build_resnet512_6_2_1()
+		if model_name == 'resnet1024_7_2_1':
+			model = build_resnet1024_7_2_1()
+		if model_name == 'resnet2048_7_2_1':
+			model = build_resnet2048_7_2_1()
 	else:
-		if model_name == 'resnet6_2_1':
-			model = build_resnet6_2_1(pretrained=True,
-									  pretrained_model_path=checkpoint_path)		
+		if model_name == 'resnet256_6_2_1':
+			model = build_resnet256_6_2_1(pretrained=True,
+										  pretrained_model_path=checkpoint_path)
+		if model_name == 'resnet512_6_2_1':
+			model = build_resnet512_6_2_1(pretrained=True,
+										  pretrained_model_path=checkpoint_path)
+		if model_name == 'resnet1024_7_2_1':
+			model = build_resnet1024_7_2_1(pretrained=True,
+										   pretrained_model_path=checkpoint_path)
+		if model_name == 'resnet2048_7_2_1':
+			model = build_resnet2048_7_2_1(pretrained=True,
+										   pretrained_model_path=checkpoint_path)	
 	return model
 
 
@@ -86,6 +103,11 @@ class ModelManager:
 	def train(self, data_dir, dataset_metadata, save_dir,
 			  batch_size=64, num_train_epochs=300, 
 			  device='cuda', init_lr=5e-4, logging_steps=50):
+		'''
+		Create a logger for logging model training
+		'''
+		logger = logging.getLogger(__name__)
+
 		'''
 		Create an instance of traning data loader
 		'''
@@ -114,16 +136,18 @@ class ModelManager:
 		Train the model
 		'''
 		print('***** Train the model *****')
+		self.model = self.model.to(device)
 		self.model.train()
 		train_iterator = trange(int(num_train_epochs), desc="Epoch")
 		for epoch in train_iterator:
+			start_time = time.time()
 			epoch_loss = 0
 			epoch_iterator = tqdm(data_loader, desc="Iteration")
 			for i, batch in enumerate(epoch_iterator, 0):
 				# Parse the batch 
 				images, labels, image_ids = batch
-				images.to(device, non_blocking=True)
-				labels.to(device, non_blocking=True)
+				images = images.to(device, non_blocking=True)
+				labels = labels.to(device, non_blocking=True)
 
 				# Zero out the parameter gradients
 				optimizer.zero_grad()
@@ -135,10 +159,15 @@ class ModelManager:
 				loss.backward()
 				optimizer.step()
 
-				# Print and record training statistics
+				# Record training statistics
 				epoch_loss += loss.item()
 			self.model.save_pretrained(save_dir, epoch=epoch + 1)
-			print(f'Epoch {epoch} finished! Epoch loss: {epoch_loss}')
+			interval = time.time() - start_time
+
+			print(f'Epoch {epoch+1} finished! Epoch loss: {epoch_loss:.5f}')
+
+			logger.info(f"  Epoch {epoch+1} loss = {epoch_loss:.5f}")
+			logger.info(f"  Epoch {epoch+1} took {interval:.3f} s")
 
 		return
 
@@ -166,6 +195,7 @@ class ModelManager:
 		Evaluate the model
 		'''
 		print('***** Evaluate the model *****')
+		self.model = self.model.to(device)
 		self.model.eval()
 
 		# For storing labels and model predictions
@@ -177,8 +207,8 @@ class ModelManager:
 		for i, batch in enumerate(epoch_iterator, 0):
 			# Parse the batch 
 			images, labels, image_ids = batch
-			images.to(device, non_blocking=True)
-			labels.to(device, non_blocking=True)
+			images = images.to(device, non_blocking=True)
+			labels = labels.to(device, non_blocking=True)
 
 			with torch.no_grad():
 				outputs = self.model(images)
@@ -208,6 +238,10 @@ class ModelManager:
 		ordinal_aucs = eval_metrics.compute_ordinal_auc(all_onehot_labels, all_preds_prob)
 		eval_results['ordinal_aucs'] = ordinal_aucs
 
+		ordinal_acc_f1 = eval_metrics.compute_ordinal_acc_f1_metrics(all_onehot_labels, 
+																     all_preds_prob)
+		eval_results.update(ordinal_acc_f1)
+
 	# pairwise_aucs = eval_metrics.compute_pairwise_auc(labels, preds)
 	# eval_results['pairwise_auc'] = pairwise_aucs
 
@@ -216,9 +250,8 @@ class ModelManager:
 
 	# eval_results['mse'] = eval_metrics.compute_mse(labels_raw, preds)
 
-	# results_acc_f1, _, _ = eval_metrics.compute_acc_f1_metrics(labels_raw, preds)
-	# eval_results.update(results_acc_f1)
-
+		results_acc_f1, _, _ = eval_metrics.compute_acc_f1_metrics(all_labels, all_preds_prob)
+		eval_results.update(results_acc_f1)
 
 		return inference_results, eval_results
 
