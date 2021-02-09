@@ -10,6 +10,9 @@ We use the regex labels for the image model training while holding out images/la
 
 Run `python split_data.py` to generate training and test metadata files.
 
+## Train the model
+Run `python train.py` to train the chest x-ray image model.
+
 ## Docker image
 
 The Docker image of this repo is stored at: https://hub.docker.com/repository/docker/rayruizhiliao/mlmodel_cxr_edema.
