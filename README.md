@@ -8,10 +8,10 @@ Run `python image_prep/dcm_to_png.py` to generate PNG images from MIMIC-CXR DICO
 ## Split data
 We use the regex labels for the image model training while holding out images/labels that come from the subjects in the test dataset. We use the consensus image labels as our test set. All the metadata information are under `mimic_cxr_edema/`.
 
-Run `python split_data.py` to generate training and test metadata files.
+Run `python split_data.py` to generate training and test metadata files ([data/training.csv](https://github.com/RayRuizhiLiao/resnet_chestxray/blob/main/data/training.csv) and [data/test.csv](https://github.com/RayRuizhiLiao/resnet_chestxray/blob/main/data/test.csv)).
 
 ## Train the model
-Run `python train.py` to train the chest x-ray image model.
+Run `python train.py` to train the resnet model.
 
 ## Docker image
 
