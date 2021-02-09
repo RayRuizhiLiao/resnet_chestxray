@@ -133,13 +133,12 @@ def frontal_dcm_to_png(img_size, save_folder, dataset_metadata,
     print(f'{num_notexist} frontal view images do not exist!')
 
 
-if __file__ == "dcm_to_png.py":
-    metadata = os.path.join(parent_dir,
-                            'mimic_cxr_edema/regex_report_edema_severity.csv')
-    #metadata = os.path.join(parent_dir,
-    #                        'mimic_cxr_edema/auxiliary_metadata/mimic_cxr_metadata_available_CHF_view.csv')
-    view_metadata = os.path.join(parent_dir,
-                                 'mimic_cxr_edema/auxiliary_metadata/mimic_cxr_metadata_available_CHF_view.csv')
-    save_dir = '/data/vision/polina/scratch/ruizhi/chestxray/data/png_16bit_512/'
-    frontal_dcm_to_png(img_size=512, save_folder=save_dir, overlap_key='study_id',
-                       dataset_metadata=metadata, view_metadata=view_metadata)
+metadata = os.path.join(parent_dir,
+                        'mimic_cxr_edema/regex_report_edema_severity.csv')
+#metadata = os.path.join(parent_dir,
+#                        'mimic_cxr_edema/auxiliary_metadata/mimic_cxr_metadata_available_CHF_view.csv')
+view_metadata = os.path.join(parent_dir,
+                             'mimic_cxr_edema/auxiliary_metadata/mimic_cxr_metadata_available_CHF_view.csv')
+save_dir = '/data/vision/polina/scratch/ruizhi/chestxray/data/png_16bit_512/'
+frontal_dcm_to_png(img_size=512, save_folder=save_dir, overlap_key='study_id',
+                   dataset_metadata=metadata, view_metadata=view_metadata)

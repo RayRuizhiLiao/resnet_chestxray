@@ -248,7 +248,7 @@ class ModelManager:
 	# multiclass_aucs = eval_metrics.compute_multiclass_auc(labels, preds)
 	# eval_results['multiclass_aucs'] = multiclass_aucs
 
-	# eval_results['mse'] = eval_metrics.compute_mse(labels_raw, preds)
+		eval_results['mse'] = eval_metrics.compute_mse(all_labels, all_preds_prob)
 
 		results_acc_f1, _, _ = eval_metrics.compute_acc_f1_metrics(all_labels, all_preds_prob)
 		eval_results.update(results_acc_f1)

@@ -13,27 +13,29 @@ from resnet_chestxray.main_utils import ModelManager, build_model
 current_dir = os.path.dirname(__file__)
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--batch_size', default=256, type=int,
+parser.add_argument('--batch_size', default=8, type=int,
 					help='Mini-batch size')
 
-parser.add_argument('--img_size', default=256, type=int,
+parser.add_argument('--img_size', default=2048, type=int,
                     help='The size of the input image')
-parser.add_argument('--model_architecture', default='resnet256_6_2_1', type=str,
+parser.add_argument('--model_architecture', default='resnet2048_7_2_1', type=str,
                     help='Neural network architecture to be used')
 
 parser.add_argument('--data_dir', type=str,
-					default='/data/vision/polina/scratch/ruizhi/chestxray/data/png_16bit_256/',
+					default='/data/vision/polina/scratch/ruizhi/chestxray/data/png_16bit_2048/',
 					help='The image data directory')
 parser.add_argument('--dataset_metadata', type=str,
 					default=os.path.join(current_dir, 'data/training.csv'),
 					help='The metadata for the model training ')
 parser.add_argument('--save_dir', type=str,
 					default='/data/vision/polina/scratch/ruizhi/chestxray/experiments/'\
-					'supervised_image/tmp_test_resolution/')
+					'supervised_image/tmp_test_resolution_batchsize8/')
 
 
 def train():
 	args = parser.parse_args()
+
+	args.save_dir = os.path.join(args.save_dir, args.model_architecture)
 
 	print(args)
 
@@ -52,5 +54,4 @@ def train():
 						dataset_metadata=args.dataset_metadata,
 						batch_size=args.batch_size, save_dir=args.save_dir)
 
-if __file__ == "train.py":
-	train()
+train()
