@@ -13,23 +13,25 @@ from resnet_chestxray.main_utils import ModelManager, build_model
 current_dir = os.path.dirname(__file__)
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--batch_size', default=8, type=int,
+parser.add_argument('--batch_size', default=64, type=int,
 					help='Mini-batch size')
 
-parser.add_argument('--img_size', default=2048, type=int,
+parser.add_argument('--img_size', default=256, type=int,
                     help='The size of the input image')
-parser.add_argument('--model_architecture', default='resnet2048_7_2_1', type=str,
+parser.add_argument('--output_channels', default=1, type=int,
+                    help='The number of ouput channels')
+parser.add_argument('--model_architecture', default='resnet256_6_2_1', type=str,
                     help='Neural network architecture to be used')
 
 parser.add_argument('--data_dir', type=str,
-					default='/data/vision/polina/scratch/ruizhi/chestxray/data/png_16bit_2048/',
+					default='/data/vision/polina/scratch/ruizhi/chestxray/data/png_16bit_256/',
 					help='The image data directory')
 parser.add_argument('--dataset_metadata', type=str,
-					default=os.path.join(current_dir, 'data/training.csv'),
+					default=os.path.join(current_dir, 'data/training_chexpert.csv'),
 					help='The metadata for the model training ')
 parser.add_argument('--save_dir', type=str,
 					default='/data/vision/polina/scratch/ruizhi/chestxray/experiments/'\
-					'supervised_image/tmp_test_resolution_batchsize8/')
+					'supervised_image/tmp_test_chexpert_edema/')
 
 
 def train():
@@ -49,9 +51,11 @@ def train():
 						datefmt='%m-%d %H:%M')
 
 	model_manager = ModelManager(model_name=args.model_architecture, 
-								 img_size=args.img_size)
+								 img_size=args.img_size,
+								 output_channels=args.output_channels)
 	model_manager.train(data_dir=args.data_dir, 
 						dataset_metadata=args.dataset_metadata,
-						batch_size=args.batch_size, save_dir=args.save_dir)
+						batch_size=args.batch_size, save_dir=args.save_dir,
+						label_key='Edema', loss_method='BCEWithLogitsLoss')
 
 train()

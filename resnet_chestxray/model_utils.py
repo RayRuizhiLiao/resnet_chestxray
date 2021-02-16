@@ -12,7 +12,6 @@ from math import floor, ceil
 import scipy.ndimage as ndimage
 from skimage import io
 import pandas as pd
-import gin
 import cv2
 
 from .utils import MimicID
@@ -122,9 +121,8 @@ class CXRImageDataset(torchvision.datasets.VisionDataset):
             self.images[str(idx)] = img
 
     @staticmethod
-    @gin.configurable
     def create_dataset_metadata(mimiccxr_metadata, label_metadata, save_path,
-                                data_key='study_id', label_key='edema_severity',
+                                data_key='study_id', label_key=['edema_severity'],
                                 mimiccxr_selection={'view': ['frontal']},
                                 holdout_metadata=None, holdout_key='subject_id'):
         """Create a dataset metadata file for CXRImageDataset 
@@ -144,11 +142,11 @@ class CXRImageDataset(torchvision.datasets.VisionDataset):
             holdout_metadata = pd.read_csv(holdout_metadata)
             dataset_metadata = dataset_metadata[~dataset_metadata[holdout_key].isin(holdout_metadata[holdout_key])]
 
-        label_metadata = label_metadata[[data_key, label_key]]
+        label_metadata = label_metadata[[data_key]+label_key]
         dataset_metadata = dataset_metadata.merge(label_metadata, left_on=data_key, right_on=data_key)
 
         dataset_metadata['mimic_id'] = dataset_metadata.apply(lambda row: \
             MimicID(row['subject_id'], row['study_id'], row['dicom_id']).__str__(), axis=1)
-        dataset_metadata = dataset_metadata[['mimic_id', label_key]]
+        dataset_metadata = dataset_metadata[['mimic_id']+label_key]
 
         dataset_metadata.to_csv(save_path, index=False)

@@ -818,30 +818,30 @@ class ResNet256_6_2_1(nn.Module):
 
 
 def build_resnet2048_7_2_1(block=BasicBlock, blocks_per_layers=[2, 2, 2, 2, 2, 2, 2], 
-			    pretrained=False, pretrained_model_path=None, **kwargs):
-    model = ResNet2048_7_2_1(block, blocks_per_layers, **kwargs)
+			    pretrained=False, pretrained_model_path=None, output_channels=4, **kwargs):
+    model = ResNet2048_7_2_1(block, blocks_per_layers, output_channels, **kwargs)
     if pretrained:
         model = model.from_pretrained(pretrained_model_path, block, blocks_per_layers, **kwargs)
     return model
 
 
 def build_resnet1024_7_2_1(block=BasicBlock, blocks_per_layers=[2, 2, 2, 2, 2, 2, 2], 
-                pretrained=False, pretrained_model_path=None, **kwargs):
-    model = ResNet1024_7_2_1(block, blocks_per_layers, **kwargs)
+                pretrained=False, pretrained_model_path=None, output_channels=4, **kwargs):
+    model = ResNet1024_7_2_1(block, blocks_per_layers, output_channels, **kwargs)
     if pretrained:
         model = model.from_pretrained(pretrained_model_path, block, blocks_per_layers, **kwargs)
     return model
 
 def build_resnet512_6_2_1(block=BasicBlock, blocks_per_layers=[2, 2, 2, 2, 2, 2], 
-                      pretrained=False, pretrained_model_path=None, **kwargs):
-    model = ResNet512_6_2_1(block, blocks_per_layers, **kwargs)
+                      pretrained=False, pretrained_model_path=None, output_channels=4, **kwargs):
+    model = ResNet512_6_2_1(block, blocks_per_layers, output_channels, **kwargs)
     if pretrained:
         model = model.from_pretrained(pretrained_model_path, block, blocks_per_layers, **kwargs)
     return model
 
 def build_resnet256_6_2_1(block=BasicBlock, blocks_per_layers=[2, 2, 2, 2, 2, 2], 
-                      pretrained=False, pretrained_model_path=None, **kwargs):
-    model = ResNet256_6_2_1(block, blocks_per_layers, **kwargs)
+                      pretrained=False, pretrained_model_path=None, output_channels=4, **kwargs):
+    model = ResNet256_6_2_1(block, blocks_per_layers, output_channels, **kwargs)
     if pretrained:
         model = model.from_pretrained(pretrained_model_path, block, blocks_per_layers, **kwargs)
     return model

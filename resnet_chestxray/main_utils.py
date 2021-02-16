@@ -22,7 +22,7 @@ import torch
 import torchvision
 import torch.optim as optim
 import torch.optim.lr_scheduler as lr_scheduler
-from torch.nn import CrossEntropyLoss
+from torch.nn import CrossEntropyLoss, BCEWithLogitsLoss
 from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import DataLoader
 
@@ -33,7 +33,7 @@ import eval_metrics
 
 
 def build_training_dataset(data_dir, img_size: int, dataset_metadata='../data/training.csv',
-						   random_degrees=[-20,20], random_translate=[0.1,0.1]):
+						   random_degrees=[-20,20], random_translate=[0.1,0.1], label_key='edema_severity'):
 	transform=torchvision.transforms.Compose([
 		torchvision.transforms.Lambda(lambda img: img.astype(np.int16)),
 		torchvision.transforms.ToPILImage(),
@@ -46,7 +46,8 @@ def build_training_dataset(data_dir, img_size: int, dataset_metadata='../data/tr
 	])
 	training_dataset = CXRImageDataset(data_dir=data_dir, 
 									   dataset_metadata=dataset_metadata, 
-									   transform=transform)
+									   transform=transform,
+									   label_key=label_key)
 
 	return training_dataset
 
@@ -66,43 +67,49 @@ def build_evaluation_dataset(data_dir, img_size: int, dataset_metadata='../data/
 
 	return evaluation_dataset
 
-def build_model(model_name, checkpoint_path=None):
+def build_model(model_name, checkpoint_path=None, output_channels=4):
 	if checkpoint_path == None:
 		if model_name == 'resnet256_6_2_1':
-			model = build_resnet256_6_2_1()
+			model = build_resnet256_6_2_1(output_channels=output_channels)
 		if model_name == 'resnet512_6_2_1':
-			model = build_resnet512_6_2_1()
+			model = build_resnet512_6_2_1(output_channels=output_channels)
 		if model_name == 'resnet1024_7_2_1':
-			model = build_resnet1024_7_2_1()
+			model = build_resnet1024_7_2_1(output_channels=output_channels)
 		if model_name == 'resnet2048_7_2_1':
-			model = build_resnet2048_7_2_1()
+			model = build_resnet2048_7_2_1(output_channels=output_channels)
 	else:
 		if model_name == 'resnet256_6_2_1':
 			model = build_resnet256_6_2_1(pretrained=True,
-										  pretrained_model_path=checkpoint_path)
+										  pretrained_model_path=checkpoint_path,
+										  output_channels=output_channels)
 		if model_name == 'resnet512_6_2_1':
 			model = build_resnet512_6_2_1(pretrained=True,
-										  pretrained_model_path=checkpoint_path)
+										  pretrained_model_path=checkpoint_path,
+										  output_channels=output_channels)
 		if model_name == 'resnet1024_7_2_1':
 			model = build_resnet1024_7_2_1(pretrained=True,
-										   pretrained_model_path=checkpoint_path)
+										   pretrained_model_path=checkpoint_path,
+										   output_channels=output_channels)
 		if model_name == 'resnet2048_7_2_1':
 			model = build_resnet2048_7_2_1(pretrained=True,
-										   pretrained_model_path=checkpoint_path)	
+										   pretrained_model_path=checkpoint_path,
+										   output_channels=output_channels)	
 	return model
 
 
 class ModelManager:
 
-	def __init__(self, model_name, img_size):
+	def __init__(self, model_name, img_size, output_channels=4):
 		self.model_name = model_name
-		self.model = build_model(self.model_name)
+		self.output_channels = output_channels
+		self.model = build_model(self.model_name, output_channels=self.output_channels)
 		self.img_size = img_size
 		self.logger = logging.getLogger(__name__)
 
 	def train(self, data_dir, dataset_metadata, save_dir,
 			  batch_size=64, num_train_epochs=300, 
-			  device='cuda', init_lr=5e-4, logging_steps=50):
+			  device='cuda', init_lr=5e-4, logging_steps=50,
+			  label_key='edema_severity', loss_method='CrossEntropyLoss'):
 		'''
 		Create a logger for logging model training
 		'''
@@ -114,7 +121,8 @@ class ModelManager:
 		print('***** Instantiate a data loader *****')
 		dataset = build_training_dataset(data_dir=data_dir,
 										 img_size=self.img_size,
-										 dataset_metadata=dataset_metadata)
+										 dataset_metadata=dataset_metadata,
+										 label_key=label_key)
 		data_loader = DataLoader(dataset, batch_size=batch_size,
 								 shuffle=True, num_workers=8,
 								 pin_memory=True)
@@ -124,7 +132,10 @@ class ModelManager:
 		Create an instance of loss
 		'''
 		print('***** Instantiate the training loss *****')
-		loss_criterion = CrossEntropyLoss().to(device)
+		if loss_method == 'CrossEntropyLoss':
+			loss_criterion = CrossEntropyLoss().to(device)
+		elif loss_method == 'BCEWithLogitsLoss':
+			loss_criterion = BCEWithLogitsLoss().to(device)
 
 		'''
 		Create an instance of optimizer and learning rate scheduler
@@ -154,8 +165,12 @@ class ModelManager:
 
 				# Forward + backward + optimize
 				outputs = self.model(images)
-				# Note that the logits are used here 
-				loss = loss_criterion(outputs[-1], labels)
+				pred_logits = outputs[-1]
+				# Note that the logits are used here
+				if loss_method == 'BCEWithLogitsLoss':
+					labels = torch.reshape(labels, pred_logits.size())
+				pred_logits[labels<0] = labels[labels<0]
+				loss = loss_criterion(pred_logits, labels)
 				loss.backward()
 				optimizer.step()
 
