@@ -169,7 +169,9 @@ class ModelManager:
 				# Note that the logits are used here
 				if loss_method == 'BCEWithLogitsLoss':
 					labels = torch.reshape(labels, pred_logits.size())
-				pred_logits[labels<0] = labels[labels<0]
+				
+				pred_logits[labels<0] = 0
+				labels[labels<0] = 0.5
 				loss = loss_criterion(pred_logits, labels)
 				loss.backward()
 				optimizer.step()
