@@ -16,6 +16,9 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--batch_size', default=64, type=int,
 					help='Mini-batch size')
 
+parser.add_argument('--label_key', default='Edema', type=str,
+					help='The label key/classification task')
+
 parser.add_argument('--img_size', default=256, type=int,
                     help='The size of the input image')
 parser.add_argument('--output_channels', default=1, type=int,
@@ -37,7 +40,7 @@ parser.add_argument('--save_dir', type=str,
 def train():
 	args = parser.parse_args()
 
-	args.save_dir = os.path.join(args.save_dir, args.model_architecture)
+	args.save_dir = os.path.join(args.save_dir, args.model_architecture+'_'+args.label_key)
 
 	print(args)
 
@@ -56,6 +59,6 @@ def train():
 	model_manager.train(data_dir=args.data_dir, 
 						dataset_metadata=args.dataset_metadata,
 						batch_size=args.batch_size, save_dir=args.save_dir,
-						label_key='Edema', loss_method='BCEWithLogitsLoss')
+						label_key=args.label_key, loss_method='BCEWithLogitsLoss')
 
 train()

@@ -87,6 +87,7 @@ class CXRImageDataset(torchvision.datasets.VisionDataset):
         self.label_key = label_key
         self.transform = transform
         self.image_ids = self.dataset_metadata[data_key]
+        self.select_valid_labels()
         self.cache = cache
         if self.cache:
             self.cache_dataset() 
@@ -98,6 +99,7 @@ class CXRImageDataset(torchvision.datasets.VisionDataset):
 
     def __getitem__(self, idx):
         img_id, label = self.dataset_metadata.loc[idx, [self.data_key, self.label_key]]
+
         if self.cache:
             img = self.images[str(idx)]
         else:
@@ -110,6 +112,11 @@ class CXRImageDataset(torchvision.datasets.VisionDataset):
         img = np.expand_dims(img, axis=0)
 
         return img, label, img_id
+
+    def select_valid_labels(self):
+        self.dataset_metadata = self.dataset_metadata[self.dataset_metadata[self.label_key]>=0]
+        self.dataset_metadata = self.dataset_metadata.reset_index(drop=True)
+        self.image_ids = self.dataset_metadata[self.data_key]
 
     def cache_dataset(self):
         for idx in range(self.__len__()):

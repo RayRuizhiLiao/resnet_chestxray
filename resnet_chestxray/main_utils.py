@@ -135,7 +135,7 @@ class ModelManager:
 		if loss_method == 'CrossEntropyLoss':
 			loss_criterion = CrossEntropyLoss().to(device)
 		elif loss_method == 'BCEWithLogitsLoss':
-			loss_criterion = BCEWithLogitsLoss().to(device)
+			loss_criterion = BCEWithLogitsLoss(reduction='sum').to(device)
 
 		'''
 		Create an instance of optimizer and learning rate scheduler
@@ -178,6 +178,11 @@ class ModelManager:
 
 				# Record training statistics
 				epoch_loss += loss.item()
+
+				if not loss.item()>0:
+					logger.info(f"loss: {loss.item()}")
+					logger.info(f"pred_logits: {pred_logits}")
+					logger.info(f"labels: {labels}")
 			self.model.save_pretrained(save_dir, epoch=epoch + 1)
 			interval = time.time() - start_time
 
