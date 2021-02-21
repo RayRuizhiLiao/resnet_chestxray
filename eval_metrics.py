@@ -69,8 +69,8 @@ def compute_ordinal_auc(labels, preds):
 
 def compute_multiclass_auc(labels, preds):
     ''' Compute multiclass AUCs given
-        labels (a batch of 4-class one-hot labels) and
-        preds (a batch of predictions as 4-class probabilities)
+        labels (a batch of C-class one-hot labels) and
+        preds (a batch of predictions as C-class probabilities)
     '''
 
     assert np.shape(labels) == np.shape(preds) # size(labels)=(N,C);size(preds)=(N,C)

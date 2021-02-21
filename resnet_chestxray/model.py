@@ -753,12 +753,12 @@ class ResNet256_6_2_1(nn.Module):
     # https://github.com/huggingface/transformers/blob/v1.0.0/pytorch_transformers/modeling_utils.py
     @classmethod
     def from_pretrained(cls, pretrained_model_path, block, blocks_per_layers, 
-                        *inputs, **kwargs):
+                        output_channels, *inputs, **kwargs):
         state_dict = kwargs.pop('state_dict', None)
         output_loading_info = kwargs.pop('output_loading_info', False)
 
         # Instantiate the model
-        model = cls(block, blocks_per_layers, **kwargs)
+        model = cls(block, blocks_per_layers, output_channels=output_channels, **kwargs)
 
         # if the user has not provided the ability to load in their own state dict, but our module
         # in this case it is easier to just use save_pretrained and from_pretrained to read that 
@@ -819,29 +819,33 @@ class ResNet256_6_2_1(nn.Module):
 
 def build_resnet2048_7_2_1(block=BasicBlock, blocks_per_layers=[2, 2, 2, 2, 2, 2, 2], 
 			    pretrained=False, pretrained_model_path=None, output_channels=4, **kwargs):
-    model = ResNet2048_7_2_1(block, blocks_per_layers, output_channels, **kwargs)
+    model = ResNet2048_7_2_1(block, blocks_per_layers, output_channels=output_channels, **kwargs)
     if pretrained:
-        model = model.from_pretrained(pretrained_model_path, block, blocks_per_layers, **kwargs)
+        model = model.from_pretrained(pretrained_model_path, block, blocks_per_layers,
+                                      output_channels, **kwargs)
     return model
 
 
 def build_resnet1024_7_2_1(block=BasicBlock, blocks_per_layers=[2, 2, 2, 2, 2, 2, 2], 
                 pretrained=False, pretrained_model_path=None, output_channels=4, **kwargs):
-    model = ResNet1024_7_2_1(block, blocks_per_layers, output_channels, **kwargs)
+    model = ResNet1024_7_2_1(block, blocks_per_layers, output_channels=output_channels, **kwargs)
     if pretrained:
-        model = model.from_pretrained(pretrained_model_path, block, blocks_per_layers, **kwargs)
+        model = model.from_pretrained(pretrained_model_path, block, blocks_per_layers,
+                                      output_channels, **kwargs)
     return model
 
 def build_resnet512_6_2_1(block=BasicBlock, blocks_per_layers=[2, 2, 2, 2, 2, 2], 
                       pretrained=False, pretrained_model_path=None, output_channels=4, **kwargs):
-    model = ResNet512_6_2_1(block, blocks_per_layers, output_channels, **kwargs)
+    model = ResNet512_6_2_1(block, blocks_per_layers, output_channels=output_channels, **kwargs)
     if pretrained:
-        model = model.from_pretrained(pretrained_model_path, block, blocks_per_layers, **kwargs)
+        model = model.from_pretrained(pretrained_model_path, block, blocks_per_layers,
+                                      output_channels, **kwargs)
     return model
 
 def build_resnet256_6_2_1(block=BasicBlock, blocks_per_layers=[2, 2, 2, 2, 2, 2], 
                       pretrained=False, pretrained_model_path=None, output_channels=4, **kwargs):
-    model = ResNet256_6_2_1(block, blocks_per_layers, output_channels, **kwargs)
+    model = ResNet256_6_2_1(block, blocks_per_layers, output_channels=output_channels, **kwargs)
     if pretrained:
-        model = model.from_pretrained(pretrained_model_path, block, blocks_per_layers, **kwargs)
+        model = model.from_pretrained(pretrained_model_path, block, blocks_per_layers,
+                                      output_channels, **kwargs)
     return model

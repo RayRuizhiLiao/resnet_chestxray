@@ -51,7 +51,7 @@ def build_training_dataset(data_dir, img_size: int, dataset_metadata='../data/tr
 
 	return training_dataset
 
-def build_evaluation_dataset(data_dir, img_size: int, dataset_metadata='../data/test.csv'):
+def build_evaluation_dataset(data_dir, img_size: int, dataset_metadata='../data/test.csv', label_key='edema_severity'):
 	transform=torchvision.transforms.Compose([
 		torchvision.transforms.Lambda(lambda img: img.astype(np.int16)),
 		torchvision.transforms.ToPILImage(),
@@ -63,7 +63,8 @@ def build_evaluation_dataset(data_dir, img_size: int, dataset_metadata='../data/
 	])
 	evaluation_dataset = CXRImageDataset(data_dir=data_dir, 
 									     dataset_metadata=dataset_metadata, 
-									     transform=transform)
+									     transform=transform,
+									     label_key=label_key)
 
 	return evaluation_dataset
 
@@ -194,11 +195,12 @@ class ModelManager:
 		return
 
 	def eval(self, data_dir, dataset_metadata, checkpoint_path,
-			 batch_size=64, device='cuda'):
+			 batch_size=64, device='cuda', label_key='edema_severity'):
 		'''
 		Load the checkpoint (essentially create a "different" model)
 		'''
-		self.model = build_model(self.model_name,
+		self.model = build_model(model_name=self.model_name,
+								 output_channels=self.output_channels,
 								 checkpoint_path=checkpoint_path)
 
 		'''
@@ -207,7 +209,8 @@ class ModelManager:
 		print('***** Instantiate a data loader *****')
 		dataset = build_evaluation_dataset(data_dir=data_dir,
 										   img_size=self.img_size,
-										   dataset_metadata=dataset_metadata)
+										   dataset_metadata=dataset_metadata,
+										   label_key=label_key)
 		data_loader = DataLoader(dataset, batch_size=batch_size,
 								 shuffle=True, num_workers=8,
 								 pin_memory=True)
@@ -231,12 +234,15 @@ class ModelManager:
 			images, labels, image_ids = batch
 			images = images.to(device, non_blocking=True)
 			labels = labels.to(device, non_blocking=True)
-
+			
 			with torch.no_grad():
 				outputs = self.model(images)
 				
 				preds_prob = outputs[0]
 				preds_logit = outputs[-1]
+
+				if not label_key == 'edema_severity':
+					labels = torch.reshape(labels, preds_logit.size())
 
 				preds_prob = preds_prob.detach().cpu().numpy()
 				preds_logit = preds_logit.detach().cpu().numpy()
@@ -249,31 +255,33 @@ class ModelManager:
 				all_labels += \
 					[labels[j] for j in range(len(labels))]
 
+
 		all_preds_class = np.argmax(all_preds_prob, axis=1)
 		inference_results = {'all_preds_prob': all_preds_prob,
 							 'all_preds_class': all_preds_class,
+							 'all_preds_logit': all_preds_logit,
 							 'all_labels': all_labels}
-		
-		all_onehot_labels = [convert_to_onehot(label) for label in all_labels]
 		eval_results = {}
 
-		ordinal_aucs = eval_metrics.compute_ordinal_auc(all_onehot_labels, all_preds_prob)
-		eval_results['ordinal_aucs'] = ordinal_aucs
+		if label_key == 'edema_severity':
+			all_onehot_labels = [convert_to_onehot(label) for label in all_labels]
 
-		ordinal_acc_f1 = eval_metrics.compute_ordinal_acc_f1_metrics(all_onehot_labels, 
-																     all_preds_prob)
-		eval_results.update(ordinal_acc_f1)
+			ordinal_aucs = eval_metrics.compute_ordinal_auc(all_onehot_labels, all_preds_prob)
+			eval_results['ordinal_aucs'] = ordinal_aucs
 
-	# pairwise_aucs = eval_metrics.compute_pairwise_auc(labels, preds)
-	# eval_results['pairwise_auc'] = pairwise_aucs
+			ordinal_acc_f1 = eval_metrics.compute_ordinal_acc_f1_metrics(all_onehot_labels, 
+																	     all_preds_prob)
+			eval_results.update(ordinal_acc_f1)
 
-	# multiclass_aucs = eval_metrics.compute_multiclass_auc(labels, preds)
-	# eval_results['multiclass_aucs'] = multiclass_aucs
+			eval_results['mse'] = eval_metrics.compute_mse(all_labels, all_preds_prob)
 
-		eval_results['mse'] = eval_metrics.compute_mse(all_labels, all_preds_prob)
-
-		results_acc_f1, _, _ = eval_metrics.compute_acc_f1_metrics(all_labels, all_preds_prob)
-		eval_results.update(results_acc_f1)
+			results_acc_f1, _, _ = eval_metrics.compute_acc_f1_metrics(all_labels, all_preds_prob)
+			eval_results.update(results_acc_f1)
+		else:
+			all_preds_prob = [1 / (1 + np.exp(-logit)) for logit in all_preds_logit]
+			all_preds_class = np.argmax(all_preds_prob, axis=1)
+			aucs = eval_metrics.compute_multiclass_auc(all_labels, all_preds_prob)
+			eval_results['aucs'] = aucs
 
 		return inference_results, eval_results
 
