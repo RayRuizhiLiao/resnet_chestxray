@@ -8,16 +8,22 @@ import os
 import argparse
 import logging
 
-from resnet_chestxray.main_utils import ModelManager, build_model
+import torch
+
+from resnet_chestxray.main_utils import ModelManager
 
 current_dir = os.path.dirname(__file__)
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--batch_size', default=64, type=int,
 					help='Mini-batch size')
-
-parser.add_argument('--label_key', default='Edema', type=str,
-					help='The label key/classification task')
+parser.add_argument('--num_train_epochs', default=300, type=int,
+                    help='Number of training epochs')
+parser.add_argument('--loss_method', type=str,
+                    default='BCEWithLogitsLoss',
+                    help='Loss function for model training')
+parser.add_argument('--init_lr', default=5e-4, type=float, 
+                    help='Intial learning rate')
 
 parser.add_argument('--img_size', default=256, type=int,
                     help='The size of the input image')
@@ -34,16 +40,29 @@ parser.add_argument('--dataset_metadata', type=str,
 					help='The metadata for the model training ')
 parser.add_argument('--save_dir', type=str,
 					default='/data/vision/polina/scratch/ruizhi/chestxray/experiments/'\
-					'supervised_image/tmp_test_chexpert_edema/')
+					'supervised_image/tmp_postmiccai/')
+parser.add_argument('--label_key', type=str,
+                    default='Edema',
+                    help='The supervised task (the key of the corresponding label column)')
 
 
 def train():
 	args = parser.parse_args()
 
-	args.save_dir = os.path.join(args.save_dir, args.model_architecture+'_'+args.label_key)
-
 	print(args)
 
+	'''
+	Check cuda
+	'''
+	device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+	assert torch.cuda.is_available(), "No GPU/CUDA is detected!"
+
+	'''
+	Create a sub-directory under save_dir 
+	based on the label key
+	'''
+	args.save_dir = os.path.join(args.save_dir, 
+								 args.model_architecture+'_'+args.label_key)
 	if not os.path.exists(args.save_dir):
 		os.makedirs(args.save_dir)
 
@@ -56,6 +75,10 @@ def train():
 	model_manager = ModelManager(model_name=args.model_architecture, 
 								 img_size=args.img_size,
 								 output_channels=args.output_channels)
+
+	model_manager.train(device=device,
+						args=args)
+
 	model_manager.train(data_dir=args.data_dir, 
 						dataset_metadata=args.dataset_metadata,
 						batch_size=args.batch_size, save_dir=args.save_dir,

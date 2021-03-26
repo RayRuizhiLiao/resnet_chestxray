@@ -107,10 +107,11 @@ class ModelManager:
 		self.img_size = img_size
 		self.logger = logging.getLogger(__name__)
 
-	def train(self, data_dir, dataset_metadata, save_dir,
-			  batch_size=64, num_train_epochs=300, 
-			  device='cuda', init_lr=5e-4, logging_steps=50,
-			  label_key='edema_severity', loss_method='CrossEntropyLoss'):
+	def train(self, device, args):
+		# data_dir, dataset_metadata, save_dir,
+		# 	  batch_size=64, num_train_epochs=300, 
+		# 	  device='cuda', init_lr=5e-4, logging_steps=50,
+		# 	  label_key='edema_severity', loss_method='CrossEntropyLoss'):
 		'''
 		Create a logger for logging model training
 		'''
@@ -120,11 +121,11 @@ class ModelManager:
 		Create an instance of traning data loader
 		'''
 		print('***** Instantiate a data loader *****')
-		dataset = build_training_dataset(data_dir=data_dir,
+		dataset = build_training_dataset(data_dir=args.data_dir,
 										 img_size=self.img_size,
-										 dataset_metadata=dataset_metadata,
-										 label_key=label_key)
-		data_loader = DataLoader(dataset, batch_size=batch_size,
+										 dataset_metadata=args.dataset_metadata,
+										 label_key=args.label_key)
+		data_loader = DataLoader(dataset, batch_size=args.batch_size,
 								 shuffle=True, num_workers=8,
 								 pin_memory=True)
 		print(f'Total number of training images: {len(dataset)}')
@@ -133,16 +134,16 @@ class ModelManager:
 		Create an instance of loss
 		'''
 		print('***** Instantiate the training loss *****')
-		if loss_method == 'CrossEntropyLoss':
+		if args.loss_method == 'CrossEntropyLoss':
 			loss_criterion = CrossEntropyLoss().to(device)
-		elif loss_method == 'BCEWithLogitsLoss':
+		elif args.loss_method == 'BCEWithLogitsLoss':
 			loss_criterion = BCEWithLogitsLoss(reduction='sum').to(device)
 
 		'''
 		Create an instance of optimizer and learning rate scheduler
 		'''
 		print('***** Instantiate an optimizer *****')
-		optimizer = optim.Adam(self.model.parameters(), lr=init_lr)
+		optimizer = optim.Adam(self.model.parameters(), lr=args.init_lr)
 
 		'''
 		Train the model
@@ -150,7 +151,7 @@ class ModelManager:
 		print('***** Train the model *****')
 		self.model = self.model.to(device)
 		self.model.train()
-		train_iterator = trange(int(num_train_epochs), desc="Epoch")
+		train_iterator = trange(int(args.num_train_epochs), desc="Epoch")
 		for epoch in train_iterator:
 			start_time = time.time()
 			epoch_loss = 0
@@ -168,7 +169,7 @@ class ModelManager:
 				outputs = self.model(images)
 				pred_logits = outputs[-1]
 				# Note that the logits are used here
-				if loss_method == 'BCEWithLogitsLoss':
+				if args.loss_method == 'BCEWithLogitsLoss':
 					labels = torch.reshape(labels, pred_logits.size())
 				
 				pred_logits[labels<0] = 0
@@ -184,7 +185,7 @@ class ModelManager:
 					logger.info(f"loss: {loss.item()}")
 					logger.info(f"pred_logits: {pred_logits}")
 					logger.info(f"labels: {labels}")
-			self.model.save_pretrained(save_dir, epoch=epoch + 1)
+			self.model.save_pretrained(args.save_dir, epoch=epoch + 1)
 			interval = time.time() - start_time
 
 			print(f'Epoch {epoch+1} finished! Epoch loss: {epoch_loss:.5f}')
