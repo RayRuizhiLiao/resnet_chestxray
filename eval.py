@@ -8,6 +8,8 @@ import os
 import argparse
 import logging
 
+import torch
+
 from resnet_chestxray.main_utils import ModelManager, build_model
 
 current_dir = os.path.dirname(__file__)
@@ -34,7 +36,7 @@ parser.add_argument('--dataset_metadata', type=str,
 					help='The metadata for the model training ')
 parser.add_argument('--save_dir', type=str,
 					default='/data/vision/polina/scratch/ruizhi/chestxray/experiments/supervised_image/'\
-					'tmp_test_chexpert_edema/')
+					'tmp_postmiccai/')
 parser.add_argument('--checkpoint_name', type=str,
 					default='pytorch_model_epoch300.bin')
 
@@ -42,28 +44,28 @@ parser.add_argument('--checkpoint_name', type=str,
 def eval():
 	args = parser.parse_args()
 
-	args.save_dir = os.path.join(args.save_dir, args.model_architecture+'_'+args.label_key)
-	checkpoint_path = os.path.join(args.save_dir, args.checkpoint_name)
-
 	print(args)
 
-	if not os.path.exists(args.save_dir):
-		os.makedirs(args.save_dir)
+	'''
+	Check cuda
+	'''
+	device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+	assert torch.cuda.is_available(), "No GPU/CUDA is detected!"
 
-	# # Configure the log file
-	# log_path = os.path.join(args.save_dir, 'eval.log')
-	# logging.basicConfig(filename=log_path, level=logging.INFO, filemode='w', 
-	# 					format='%(asctime)s - %(name)s %(message)s', 
-	# 					datefmt='%m-%d %H:%M')
+	'''
+	Create a sub-directory under save_dir 
+	based on the label key
+	'''
+	args.save_dir = os.path.join(args.save_dir, args.model_architecture+'_'+args.label_key)
+	checkpoint_path = os.path.join(args.save_dir, args.checkpoint_name)
 
 	model_manager = ModelManager(model_name=args.model_architecture, 
 								 img_size=args.img_size,
 								 output_channels=args.output_channels)
-	inference_results, eval_results = model_manager.eval(data_dir=args.data_dir,
-														 dataset_metadata=args.dataset_metadata,
-														 checkpoint_path=checkpoint_path,
-														 label_key=args.label_key)
-	print(inference_results)
+	inference_results, eval_results= model_manager.eval(device=device,
+														args=args,
+														checkpoint_path=checkpoint_path)
+
 	print(eval_results)
 
 eval()

@@ -195,8 +195,7 @@ class ModelManager:
 
 		return
 
-	def eval(self, data_dir, dataset_metadata, checkpoint_path,
-			 batch_size=64, device='cuda', label_key='edema_severity'):
+	def eval(self, device, args, checkpoint_path):
 		'''
 		Load the checkpoint (essentially create a "different" model)
 		'''
@@ -208,11 +207,11 @@ class ModelManager:
 		Create an instance of evaluation data loader
 		'''
 		print('***** Instantiate a data loader *****')
-		dataset = build_evaluation_dataset(data_dir=data_dir,
+		dataset = build_evaluation_dataset(data_dir=args.data_dir,
 										   img_size=self.img_size,
-										   dataset_metadata=dataset_metadata,
-										   label_key=label_key)
-		data_loader = DataLoader(dataset, batch_size=batch_size,
+										   dataset_metadata=args.dataset_metadata,
+										   label_key=args.label_key)
+		data_loader = DataLoader(dataset, batch_size=args.batch_size,
 								 shuffle=True, num_workers=8,
 								 pin_memory=True)
 		print(f'Total number of evaluation images: {len(dataset)}')
@@ -242,7 +241,7 @@ class ModelManager:
 				preds_prob = outputs[0]
 				preds_logit = outputs[-1]
 
-				if not label_key == 'edema_severity':
+				if not args.label_key == 'edema_severity':
 					labels = torch.reshape(labels, preds_logit.size())
 
 				preds_prob = preds_prob.detach().cpu().numpy()
@@ -264,7 +263,7 @@ class ModelManager:
 							 'all_labels': all_labels}
 		eval_results = {}
 
-		if label_key == 'edema_severity':
+		if args.label_key == 'edema_severity':
 			all_onehot_labels = [convert_to_onehot(label) for label in all_labels]
 
 			ordinal_aucs = eval_metrics.compute_ordinal_auc(all_onehot_labels, all_preds_prob)
