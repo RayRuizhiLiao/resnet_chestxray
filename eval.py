@@ -7,6 +7,7 @@ Main script to run training
 import os
 import argparse
 import logging
+import json
 
 import torch
 
@@ -41,7 +42,7 @@ parser.add_argument('--checkpoint_name', type=str,
 					default='pytorch_model_epoch300.bin')
 
 
-def eval():
+def eval(all_epochs=-1):
 	args = parser.parse_args()
 
 	print(args)
@@ -57,6 +58,7 @@ def eval():
 	based on the label key
 	'''
 	args.save_dir = os.path.join(args.save_dir, args.model_architecture+'_'+args.label_key)
+	
 	checkpoint_path = os.path.join(args.save_dir, args.checkpoint_name)
 
 	model_manager = ModelManager(model_name=args.model_architecture, 
@@ -66,6 +68,30 @@ def eval():
 														args=args,
 														checkpoint_path=checkpoint_path)
 
-	print(eval_results)
+	print(f"{checkpoint_path} evaluation results: {eval_results}")
 
-eval()
+	'''
+	Evaluate on all epochs if all_epochs>0
+	'''
+	if all_epochs>0:
+		aucs_all_epochs = []
+		for epoch in range(all_epochs):
+			args.checkpoint_name = f'pytorch_model_epoch{epoch+1}.bin'
+			checkpoint_path = os.path.join(args.save_dir, args.checkpoint_name)
+			model_manager = ModelManager(model_name=args.model_architecture,
+										 img_size=args.img_size,
+										 output_channels=args.output_channels)
+			inference_results, eval_results= model_manager.eval(device=device,
+																args=args,
+																checkpoint_path=checkpoint_path)
+			aucs_all_epochs.append(eval_results['aucs'][0])
+
+		print(f"All epochs AUCs: {aucs_all_epochs}")
+
+		eval_results_all={}
+		eval_results_all['auc']=aucs_all_epochs
+		results_path = os.path.join(args.save_dir, 'eval_results_all.json')
+		with open(results_path, 'w') as fp:
+			json.dump(eval_results_all, fp)
+
+eval(all_epochs=300)
