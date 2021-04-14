@@ -40,7 +40,7 @@ parser.add_argument('--dataset_metadata', type=str,
 					help='The metadata for the model training ')
 parser.add_argument('--save_dir', type=str,
 					default='/data/vision/polina/scratch/ruizhi/chestxray/experiments/'\
-					'supervised_image/tmp_postmiccai/')
+					'supervised_image/tmp_postmiccai_v2/')
 parser.add_argument('--label_key', type=str,
                     default='Edema',
                     help='The supervised task (the key of the corresponding label column)')
@@ -78,10 +78,5 @@ def train():
 
 	model_manager.train(device=device,
 						args=args)
-
-	model_manager.train(data_dir=args.data_dir, 
-						dataset_metadata=args.dataset_metadata,
-						batch_size=args.batch_size, save_dir=args.save_dir,
-						label_key=args.label_key, loss_method='BCEWithLogitsLoss')
 
 train()

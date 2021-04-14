@@ -137,7 +137,7 @@ class ModelManager:
 		if args.loss_method == 'CrossEntropyLoss':
 			loss_criterion = CrossEntropyLoss().to(device)
 		elif args.loss_method == 'BCEWithLogitsLoss':
-			loss_criterion = BCEWithLogitsLoss(reduction='sum').to(device)
+			loss_criterion = BCEWithLogitsLoss().to(device)
 
 		'''
 		Create an instance of optimizer and learning rate scheduler
@@ -172,8 +172,8 @@ class ModelManager:
 				if args.loss_method == 'BCEWithLogitsLoss':
 					labels = torch.reshape(labels, pred_logits.size())
 				
-				pred_logits[labels<0] = 0
-				labels[labels<0] = 0.5
+				# pred_logits[labels<0] = 0
+				# labels[labels<0] = 0.5
 				loss = loss_criterion(pred_logits, labels)
 				loss.backward()
 				optimizer.step()
