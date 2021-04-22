@@ -13,6 +13,9 @@ Run `python split_data.py` to generate training and test metadata files ([data/t
 ## Train the model
 Run `python train.py` to train the resnet model.
 
+## Evaluate the model (compute certain performance metrics)
+Run `python eval.py` to evaluate the resnet model or run `python eval_all_tasks.py` to evaluate the resnet model on 9 chexpert tasks and the pulmonary edema severity assessment task.
+
 ## Docker image
 
 The Docker image of this repo is stored at: https://hub.docker.com/repository/docker/rayruizhiliao/mlmodel_cxr_edema.
