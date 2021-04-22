@@ -285,6 +285,97 @@ class ModelManager:
 
 		return inference_results, eval_results
 
+	def infer(self, device, args, checkpoint_path):
+		'''
+		Load the checkpoint (essentially create a "different" model)
+		'''
+		self.model = build_model(model_name=self.model_name,
+								 output_channels=self.output_channels,
+								 checkpoint_path=checkpoint_path)
+		print("INFER")
+
+		# '''
+		# Create an instance of evaluation data loader
+		# '''
+		# print('***** Instantiate a data loader *****')
+		# dataset = build_evaluation_dataset(data_dir=args.data_dir,
+		# 								   img_size=self.img_size,
+		# 								   dataset_metadata=args.dataset_metadata,
+		# 								   label_key=args.label_key)
+		# data_loader = DataLoader(dataset, batch_size=args.batch_size,
+		# 						 shuffle=True, num_workers=8,
+		# 						 pin_memory=True)
+		# print(f'Total number of evaluation images: {len(dataset)}')
+
+		# '''
+		# Evaluate the model
+		# '''
+		# print('***** Evaluate the model *****')
+		# self.model = self.model.to(device)
+		# self.model.eval()
+
+		# # For storing labels and model predictions
+		# all_preds_prob = []
+		# all_preds_logit = []
+		# all_labels = []
+
+		# epoch_iterator = tqdm(data_loader, desc="Iteration")
+		# for i, batch in enumerate(epoch_iterator, 0):
+		# 	# Parse the batch 
+		# 	images, labels, image_ids = batch
+		# 	images = images.to(device, non_blocking=True)
+		# 	labels = labels.to(device, non_blocking=True)
+			
+		# 	with torch.no_grad():
+		# 		outputs = self.model(images)
+				
+		# 		preds_prob = outputs[0]
+		# 		preds_logit = outputs[-1]
+
+		# 		if not args.label_key == 'edema_severity':
+		# 			labels = torch.reshape(labels, preds_logit.size())
+
+		# 		preds_prob = preds_prob.detach().cpu().numpy()
+		# 		preds_logit = preds_logit.detach().cpu().numpy()
+		# 		labels = labels.detach().cpu().numpy()
+
+		# 		all_preds_prob += \
+		# 			[preds_prob[j] for j in range(len(labels))]
+		# 		all_preds_logit += \
+		# 			[preds_logit[j] for j in range(len(labels))]
+		# 		all_labels += \
+		# 			[labels[j] for j in range(len(labels))]
+
+
+		# all_preds_class = np.argmax(all_preds_prob, axis=1)
+		# inference_results = {'all_preds_prob': all_preds_prob,
+		# 					 'all_preds_class': all_preds_class,
+		# 					 'all_preds_logit': all_preds_logit,
+		# 					 'all_labels': all_labels}
+		# eval_results = {}
+
+		# if args.label_key == 'edema_severity':
+		# 	all_onehot_labels = [convert_to_onehot(label) for label in all_labels]
+
+		# 	ordinal_aucs = eval_metrics.compute_ordinal_auc(all_onehot_labels, all_preds_prob)
+		# 	eval_results['ordinal_aucs'] = ordinal_aucs
+
+		# 	ordinal_acc_f1 = eval_metrics.compute_ordinal_acc_f1_metrics(all_onehot_labels, 
+		# 															     all_preds_prob)
+		# 	eval_results.update(ordinal_acc_f1)
+
+		# 	eval_results['mse'] = eval_metrics.compute_mse(all_labels, all_preds_prob)
+
+		# 	results_acc_f1, _, _ = eval_metrics.compute_acc_f1_metrics(all_labels, all_preds_prob)
+		# 	eval_results.update(results_acc_f1)
+		# else:
+		# 	all_preds_prob = [1 / (1 + np.exp(-logit)) for logit in all_preds_logit]
+		# 	all_preds_class = np.argmax(all_preds_prob, axis=1)
+		# 	aucs = eval_metrics.compute_multiclass_auc(all_labels, all_preds_prob)
+		# 	eval_results['aucs'] = aucs
+
+		# return inference_results, eval_results
+
 # TODO: optimize this method and maybe the csv format
 # def split_tr_eval(split_list_path, training_folds, evaluation_folds):
 # 	"""
