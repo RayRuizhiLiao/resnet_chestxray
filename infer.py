@@ -16,9 +16,6 @@ from resnet_chestxray.main_utils import ModelManager, build_model
 current_dir = os.path.dirname(__file__)
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--batch_size', default=64, type=int,
-					help='Mini-batch size')
-
 parser.add_argument('--label_key', default='Edema', type=str,
 					help='The label key/classification task')
 
@@ -29,12 +26,6 @@ parser.add_argument('--output_channels', default=1, type=int,
 parser.add_argument('--model_architecture', default='resnet256_6_2_1', type=str,
                     help='Neural network architecture to be used')
 
-parser.add_argument('--data_dir', type=str,
-					default='/data/vision/polina/scratch/ruizhi/chestxray/data/png_16bit_256/',
-					help='The image data directory')
-parser.add_argument('--dataset_metadata', type=str,
-					default=os.path.join(current_dir, 'data/test_chexpert.csv'),
-					help='The metadata for the model training ')
 parser.add_argument('--save_dir', type=str,
 					default='/data/vision/polina/scratch/ruizhi/chestxray/experiments/supervised_image/'\
 					'tmp_postmiccai_v2/')
@@ -43,7 +34,7 @@ parser.add_argument('--checkpoint_name', type=str,
 
 
 
-def infer():
+def infer(img_path):
 	args = parser.parse_args()
 
 	print(args)
@@ -65,8 +56,14 @@ def infer():
 	model_manager = ModelManager(model_name=args.model_architecture, 
 								 img_size=args.img_size,
 								 output_channels=args.output_channels)
-	model_manager.infer(device=device,
-					   args=args,
-					   checkpoint_path=checkpoint_path)
+	inference_results = model_manager.infer(device=device,
+											args=args,
+											checkpoint_path=checkpoint_path,
+											img_path=img_path)
 
-infer()
+	print(inference_results)
+
+img_dir = '/data/vision/polina/scratch/ruizhi/chestxray/data/png_16bit_256/'
+img_path = os.path.join(img_dir, 
+						'p10062617_s55170181_5b8f4e5f-074a3958-ca8e7fc2-100ffa07-6f553e72.png')
+infer(img_path)
