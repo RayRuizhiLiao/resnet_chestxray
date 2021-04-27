@@ -8,10 +8,12 @@ import os
 import argparse
 import logging
 import json
+import pandas as pd
 
 import torch
 
 from resnet_chestxray.main_utils import ModelManager, build_model
+from resnet_chestxray import utils
 
 current_dir = os.path.dirname(__file__)
 
@@ -63,7 +65,34 @@ def infer(img_path):
 
 	print(inference_results)
 
-img_dir = '/data/vision/polina/scratch/ruizhi/chestxray/data/png_16bit_256/'
-img_path = os.path.join(img_dir, 
-						'p10062617_s55170181_5b8f4e5f-074a3958-ca8e7fc2-100ffa07-6f553e72.png')
-infer(img_path)
+
+
+# img_dir = '/data/vision/polina/scratch/ruizhi/chestxray/data/png_16bit_256/'
+# img_path = os.path.join(img_dir, 
+# 						'p10062617_s55170181_5b8f4e5f-074a3958-ca8e7fc2-100ffa07-6f553e72.png')
+# infer(img_path)
+
+def get_all_mimiccxr():
+	all_metadata = os.path.join(current_dir, 'mimic_cxr_edema', 
+								'auxiliary_metadata', 'mimic_cxr_metadata_available_CHF_view.csv')
+	all_metadata = pd.read_csv(all_metadata)
+
+	all_metadata = all_metadata[all_metadata['dicom_available']==True].reset_index(drop=True)
+	all_metadata = all_metadata[all_metadata['CHF']==True].reset_index(drop=True)
+	all_metadata = all_metadata[all_metadata['view']=='frontal'].reset_index(drop=True)
+
+	all_mimicids = []
+	for i in range(len(all_metadata)):
+		subject_id = all_metadata['subject_id'][i]
+		study_id = all_metadata['study_id'][i]
+		dicom_id = all_metadata['dicom_id'][i]
+		mimicid = utils.MimicID(subject_id, study_id, dicom_id).__str__()
+		all_mimicids.append(mimicid)
+
+	return all_mimicids
+
+def infer_all_imgs():
+	all_mimicids = get_all_mimiccxr()
+	print(all_mimicids)
+
+infer_all_imgs()
