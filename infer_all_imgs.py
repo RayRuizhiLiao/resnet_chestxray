@@ -8,12 +8,10 @@ import os
 import argparse
 import logging
 import json
-import pandas as pd
 
 import torch
 
 from resnet_chestxray.main_utils import ModelManager, build_model
-from resnet_chestxray import utils
 
 current_dir = os.path.dirname(__file__)
 
@@ -71,6 +69,7 @@ def infer(img_path):
 # img_path = os.path.join(img_dir, 
 # 						'p10062617_s55170181_5b8f4e5f-074a3958-ca8e7fc2-100ffa07-6f553e72.png')
 # infer(img_path)
+
 
 def get_all_mimiccxr():
 	all_metadata = os.path.join(current_dir, 'mimic_cxr_edema', 
