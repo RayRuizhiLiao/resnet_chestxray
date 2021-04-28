@@ -297,7 +297,6 @@ class ModelManager:
 		'''
 		Load and Preprocess the input image
 		'''
-		print('***** Load and preprocess the image *****')
 		img = cv2.imread(img_path, cv2.IMREAD_ANYDEPTH)
 
 		transform = torchvision.transforms.Compose([
@@ -317,7 +316,6 @@ class ModelManager:
 		'''
 		Run model inference
 		'''
-		print('***** Run model inference *****')
 		self.model = self.model.to(device)
 		self.model.eval()
 
