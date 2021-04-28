@@ -82,25 +82,20 @@ def get_all_mimiccxr():
 	return all_mimicids
 
 def infer_all_imgs():
+	all_mimicids = get_all_mimiccxr()
+	img_dir = '/data/vision/polina/scratch/ruizhi/chestxray/data/png_16bit_256/'
+	mimiccxr_edema_prob = {}
+	i=0
+	for mimicid in all_mimicids:
+		img_path = os.path.join(img_dir, mimicid+'.png')
+		inference_results = infer(img_path)
+		edema_prob = inference_results['pred_prob'][0]
+		mimiccxr_edema_prob[mimicid] = edema_prob.tolist()
+		i+=1
+		if i%1000==0:
+			print(f"{i} out of {len(all_mimicids)} done!")
 
-	with open('mimiccxr_edema_prob.json') as f:
-		data = json.load(f)
-	print(len(data))
-
-	# all_mimicids = get_all_mimiccxr()
-	# img_dir = '/data/vision/polina/scratch/ruizhi/chestxray/data/png_16bit_256/'
-	# mimiccxr_edema_prob = {}
-	# i=0
-	# for mimicid in all_mimicids:
-	# 	img_path = os.path.join(img_dir, mimicid+'.png')
-	# 	inference_results = infer(img_path)
-	# 	edema_prob = inference_results['pred_prob'][0]
-	# 	mimiccxr_edema_prob[mimicid] = edema_prob.tolist()
-	# 	i+=1
-	# 	if i%1000==0:
-	# 		print(f"{i} out of {len(all_mimicids)} done!")
-
-	# with open("mimiccxr_edema_prob.json", "w") as outfile:
-	# 	json.dump(mimiccxr_edema_prob, outfile)
+	with open("mimiccxr_edema_prob.json", "w") as outfile:
+		json.dump(mimiccxr_edema_prob, outfile)
 
 infer_all_imgs() 
